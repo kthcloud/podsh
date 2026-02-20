@@ -14,3 +14,12 @@ ssh <deployment-name>@<public-ssh-host>:<public-ssh-port>
 # voila a "ssh" shell for the pod, and the pod doesnt even have to have sshd installed, configured and running ;)
 ```
 
+## TODO
+
+pre-auth rate limiting
+handshake deadlines
+tarpitting (sleep random time after failed auth)
+security log
+tunneling support
+command exec support
+

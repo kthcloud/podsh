@@ -6,6 +6,7 @@ require (
 	github.com/Phillezi/common/utils v0.0.0-20250720144034-e66c0601d876
 	github.com/Phillezi/interrupt v0.0.2
 	golang.org/x/crypto v0.48.0
+	golang.org/x/sync v0.19.0
 	k8s.io/api v0.35.1
 	k8s.io/apimachinery v0.35.1
 	k8s.io/client-go v0.35.1
