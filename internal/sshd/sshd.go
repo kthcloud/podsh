@@ -12,8 +12,13 @@ import (
 )
 
 var (
-	ErrValidation       = errors.New("failed validation")
-	ErrNoSessionHandler = errors.Join(errors.New("no session handler"), ErrValidation)
+	ErrValidation               = errors.New("failed validation")
+	ErrNoContext                = errors.Join(errors.New("context is nil"), ErrValidation)
+	ErrNoLogger                 = errors.Join(errors.New("logger is nil"), ErrValidation)
+	ErrNoHostSigner             = errors.Join(errors.New("no host signer"), ErrValidation)
+	ErrNoSessionHandler         = errors.Join(errors.New("no session handler"), ErrValidation)
+	ErrNoPublicKeyAuthenticator = errors.Join(errors.New("no publickey authenticator"), ErrValidation)
+	ErrRateLimiterNoHasher      = errors.Join(errors.New("ratelimiter provided but no hasher was provided"), ErrValidation)
 )
 
 type Server struct {
@@ -44,6 +49,7 @@ func New(opts ...Option) *Server {
 		auth:       cfg.PublicKeyAuthenticator,
 		limiter:    cfg.Limiter,
 		hasher:     cfg.Hasher,
+		handler:    cfg.Handler,
 	}
 
 	if s.limiter != nil && s.hasher == nil {
@@ -57,9 +63,23 @@ func New(opts ...Option) *Server {
 }
 
 func (s *Server) Validate() (err error) {
+	if s.ctx == nil {
+		err = errors.Join(ErrNoContext, err)
+	}
+	if s.logger == nil {
+		err = errors.Join(ErrNoLogger, err)
+	}
+	if s.hostSigner == nil {
+		err = errors.Join(ErrNoHostSigner, err)
+	}
 	if s.handler == nil {
 		err = errors.Join(ErrNoSessionHandler, err)
 	}
-	// TODO: validate all
+	if s.auth == nil {
+		err = errors.Join(ErrNoPublicKeyAuthenticator, err)
+	}
+	if s.limiter == nil && s.hasher == nil {
+		err = errors.Join(ErrRateLimiterNoHasher, err)
+	}
 	return
 }

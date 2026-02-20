@@ -9,6 +9,7 @@ import (
 
 type Server struct {
 	sshServer *sshd.Server
+	address   string
 }
 
 func New(opts ...Option) *Server {
@@ -18,13 +19,15 @@ func New(opts ...Option) *Server {
 	}
 
 	s := &Server{
-		sshServer: sshd.New(sshd.WithConfig(cfg.SSHDConfig)),
+		sshServer: sshd.New(sshd.WithConfig(cfg.SSHDConfig), sshd.WithHandler(cfg.Handler)),
+		address:   cfg.Address,
 	}
 
 	return s
 }
 
 func (s *Server) Validate() (err error) {
+	// TODO: parse s.address to Validate  it
 	if errs := s.sshServer.Validate(); errs != nil {
 		err = errors.Join(errs, err)
 	}
@@ -32,7 +35,7 @@ func (s *Server) Validate() (err error) {
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	if err := s.sshServer.ListenAndServe(ctx, "localhost:2222"); err != nil {
+	if err := s.sshServer.ListenAndServe(ctx, s.address); err != nil {
 		return err
 	}
 	return nil

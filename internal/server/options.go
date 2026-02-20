@@ -4,13 +4,17 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/kthcloud/podsh/internal/defaults"
 	"github.com/kthcloud/podsh/internal/sshd"
 )
 
 type Config struct {
 	Ctx context.Context
 
+	Address string
+
 	SSHDConfig sshd.Config
+	Handler    sshd.SessionHandler
 
 	Logger *slog.Logger
 }
@@ -18,6 +22,8 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Ctx: context.Background(),
+
+		Address: defaults.DefaultBindAddress,
 
 		SSHDConfig: sshd.DefaultConfig(),
 
@@ -33,6 +39,7 @@ func WithConfig(config Config) Option {
 		WithLogger(config.Logger)(cfg)
 
 		cfg.SSHDConfig = config.SSHDConfig
+		WithHandler(config.Handler)(cfg)
 	}
 }
 
@@ -51,5 +58,20 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 	return func(cfg *Config) {
 		cfg.Logger = logger
+	}
+}
+
+func WithHandler(handler sshd.SessionHandler) Option {
+	if handler == nil {
+		return func(_ *Config) {}
+	}
+	return func(cfg *Config) {
+		cfg.Handler = handler
+	}
+}
+
+func WithAddress(address string) Option {
+	return func(cfg *Config) {
+		cfg.Address = address
 	}
 }
