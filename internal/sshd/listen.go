@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync"
 
+	ratelimiter "github.com/kthcloud/podsh/internal/ratelimit"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -33,6 +34,24 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 			}
 
 			// TODO: rate limiting
+			if s.limiter != nil {
+				key, ok := s.hasher.FromConn(conn)
+				if !ok {
+					conn.Close()
+					continue
+				}
+				res := s.limiter.Allow(ctx, key)
+				if res.Decision == ratelimiter.DecisionDeny {
+					if res.RetryAfter > 0 {
+						// tell them theyre rate ratelimited
+						s.tarpit.Add(conn, res.RetryAfter)
+					} else {
+						conn.Close()
+					}
+					continue
+				}
+
+			}
 
 			go s.handleConn(ctx, conn)
 		}

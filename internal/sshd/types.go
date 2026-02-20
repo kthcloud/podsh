@@ -15,9 +15,9 @@ type Identity struct {
 }
 
 type Pty struct {
-	Term   string
-	Width  int
-	Height int
+	Term string
+	Cols int
+	Rows int
 }
 
 type ResizeEvent struct {

@@ -3,7 +3,6 @@ package gateway
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/kthcloud/podsh/internal/sshd"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,11 +24,7 @@ func NewLabelResolver(kc *kubernetes.Clientset, namespace string) *LabelResolver
 }
 
 func (r *LabelResolver) Resolve(ctx context.Context, hostname string, id sshd.Identity) (*Target, error) {
-	// FIXME: fix ctx is cancelled too early?!?
-	k8sCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	pods, err := r.kubeClient.CoreV1().Pods(r.namespace).List(k8sCtx, metav1.ListOptions{
+	pods, err := r.kubeClient.CoreV1().Pods(r.namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf(
 			"owner-id=%s,app.kubernetes.io/deploy-name=%s",
 			id.UserID,

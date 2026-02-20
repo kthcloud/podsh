@@ -3,7 +3,6 @@ package gateway
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/kthcloud/podsh/internal/sshd"
 
@@ -27,10 +26,6 @@ func NewK8sExecutor(kc *kubernetes.Clientset, rest *rest.Config) *K8sExecutor {
 }
 
 func (k *K8sExecutor) Exec(ctx context.Context, t *Target, pty sshd.Pty, s Streams) (int, error) {
-	// FIXME: fix ctx is cancelled too early?!?
-	k8sCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	req := k.Client.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(t.Pod).
@@ -64,7 +59,7 @@ func (k *K8sExecutor) Exec(ctx context.Context, t *Target, pty sshd.Pty, s Strea
 	}*/
 
 	// Stream stdin/stdout/stderr
-	err = exec.StreamWithContext(k8sCtx, remotecommand.StreamOptions{
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:             s.Stdin,
 		Stdout:            s.Stdout,
 		Stderr:            s.Stderr,

@@ -67,7 +67,7 @@ func (h *Handler) HandleSession(sess sshd.Session) {
 
 	log.Info("session start")
 
-	// 3 — run exec
+	// run exec
 	code, err := h.exec.Exec(ctx, target, pty, Streams{
 		Stdin:  sess.Stdin(),
 		Stdout: sess.Stdout(),

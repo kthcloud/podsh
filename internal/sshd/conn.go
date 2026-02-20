@@ -20,6 +20,15 @@ func (s *Server) handleConn(parent context.Context, netConn net.Conn) {
 	config := &ssh.ServerConfig{
 		PublicKeyCallback: s.publicKeyCallback(parent, logger),
 		ServerVersion:     "SSH-2.0-podsh",
+		BannerCallback: func(conn ssh.ConnMetadata) string {
+			return `   __   __  __       __             __
+  / /__/ /_/ /  ____/ /__  __ _____/ /
+ /  '_/ __/ _ \/ __/ / _ \/ // / _  / 
+/_/\_\\__/_//_/\__/_/\___/\_,_/\_,_/  
+                                      
+Connecting to your pod...
+`
+		},
 	}
 
 	config.AddHostKey(s.hostSigner)

@@ -3,10 +3,12 @@ package sshd
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log/slog"
 	"sync"
 
+	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -72,9 +74,10 @@ func newSession(
 
 	// default PTY for non-PTY clients
 	s.pty = Pty{
-		Term:   "xterm",
-		Width:  80,
-		Height: 24,
+		Term: "xterm",
+		// TODO: figure out sensible defaults
+		Cols: 80,
+		Rows: 24,
 	}
 	s.hasPty = true
 
@@ -84,16 +87,21 @@ func newSession(
 }
 
 func (s *session) handleRequests() {
-	defer s.cancel()
+	// defer s.cancel()
 
 	for req := range s.reqs {
 		switch req.Type {
 
 		case "pty-req":
-			term, w, h, ok := parsePtyReq(req.Payload)
+			term, cols, rows, ok := parsePtyReq(req.Payload)
+			s.logger.Debug("got pty-req", "cols", cols, "rows", rows)
 			if ok {
-				s.pty = Pty{Term: term, Width: w, Height: h}
-				s.hasPty = true
+				if !s.hasPty {
+					s.pty = Pty{Term: term, Cols: cols, Rows: rows}
+					s.hasPty = true
+				} else {
+					s.resizeCh <- ResizeEvent{Width: rows, Height: cols}
+				}
 				_ = req.Reply(true, nil)
 			} else {
 				_ = req.Reply(false, nil)
@@ -101,6 +109,7 @@ func (s *session) handleRequests() {
 
 		case "window-change":
 			w, h, ok := parseWinch(req.Payload)
+			s.logger.Debug("winch", "width", w, "height", h)
 			if ok {
 				select {
 				case s.resizeCh <- ResizeEvent{Width: w, Height: h}:
@@ -129,6 +138,25 @@ func (s *session) handleRequests() {
 				s.env[name] = value
 			}*/
 			_ = req.Reply(true, nil) // accept env
+
+		case "subsystem":
+
+			name, ok := parseSubsystem(req.Payload)
+			if !ok {
+				_ = req.Reply(false, nil)
+				continue
+			}
+
+			s.logger.Debug("subsystem request", "name", name)
+
+			if err := s.startSubsystem(name); err != nil {
+				s.logger.Error("subsystem failed", "err", err)
+				_ = req.Reply(false, nil)
+				continue
+			}
+
+			_ = req.Reply(true, nil)
+			return
 
 		default:
 			s.logger.Debug("unknown session request", "type", req.Type)
@@ -171,14 +199,56 @@ func (s *session) close() {
 	})
 }
 
-func parsePtyReq(b []byte) (term string, w, h int, ok bool) {
+func (s *session) startSubsystem(name string) error {
+	switch name {
+
+	case "sftp":
+		return s.runSFTP()
+
+	default:
+		return fmt.Errorf("unsupported subsystem: %s", name)
+	}
+}
+
+func (s *session) runSFTP() error {
+	server, err := sftp.NewServer(
+		s.channel,
+		sftp.WithDebug(nil),
+	)
+	if err != nil {
+		return err
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if err := server.Serve(); err != nil {
+			s.logger.Error("error on sftp server", "error", err)
+		}
+	}()
+
+	go func() {
+		select {
+		case <-s.ctx.Done():
+		case <-done:
+		}
+		s.logger.Debug("closing sftp server")
+		server.Close()
+	}()
+
+	s.logger.Debug("sftp server started")
+
+	return nil
+}
+
+func parsePtyReq(b []byte) (term string, cols, rows int, ok bool) {
 	term, b, ok = readString(b)
 	if !ok || len(b) < 8 {
 		return
 	}
 
-	w = int(binary.BigEndian.Uint32(b))
-	h = int(binary.BigEndian.Uint32(b[4:]))
+	cols = int(binary.BigEndian.Uint32(b))
+	rows = int(binary.BigEndian.Uint32(b[4:]))
 	ok = true
 	return
 }
@@ -202,4 +272,9 @@ func readString(b []byte) (string, []byte, bool) {
 		return "", nil, false
 	}
 	return string(b[4 : 4+l]), b[4+l:], true
+}
+
+func parseSubsystem(b []byte) (string, bool) {
+	name, _, ok := readString(b)
+	return name, ok
 }
