@@ -4,7 +4,7 @@ import "time"
 
 const (
 	DefaultNamespace   = "deploy"
-	DefaultBindAddress = "localhost:2222"
+	DefaultBindAddress = "127.0.0.1:2222"
 )
 
 const (

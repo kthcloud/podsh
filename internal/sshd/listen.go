@@ -16,7 +16,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 		return err
 	}
 	defer closeOnce.Do(func() {
-		ln.Close()
+		_ = ln.Close()
 	})
 
 	done := make(chan struct{})
@@ -33,20 +33,20 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 				continue
 			}
 
-			// TODO: rate limiting
 			if s.limiter != nil {
 				key, ok := s.hasher.FromConn(conn)
 				if !ok {
-					conn.Close()
+					s.logger.Warn("gailed to hash connection")
+					_ = conn.Close()
 					continue
 				}
 				res := s.limiter.Allow(ctx, key)
 				if res.Decision == ratelimiter.DecisionDeny {
 					if res.RetryAfter > 0 {
-						// tell them theyre rate ratelimited
+						s.logger.Debug("tarpitted ratelimited client", "for", res.RetryAfter)
 						s.tarpit.Add(conn, res.RetryAfter)
 					} else {
-						conn.Close()
+						_ = conn.Close()
 					}
 					continue
 				}
@@ -63,7 +63,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	case <-done:
 	case <-ctx.Done():
 		closeOnce.Do(func() {
-			ln.Close()
+			_ = ln.Close()
 		})
 	}
 

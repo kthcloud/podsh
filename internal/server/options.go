@@ -38,6 +38,7 @@ func WithConfig(config Config) Option {
 		WithContext(config.Ctx)(cfg)
 		WithLogger(config.Logger)(cfg)
 
+		cfg.Address = config.Address
 		cfg.SSHDConfig = config.SSHDConfig
 		WithHandler(config.Handler)(cfg)
 	}

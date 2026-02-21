@@ -233,7 +233,7 @@ func (s *session) runSFTP() error {
 		case <-done:
 		}
 		s.logger.Debug("closing sftp server")
-		server.Close()
+		_ = server.Close()
 	}()
 
 	s.logger.Debug("sftp server started")

@@ -3,13 +3,16 @@ package server
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/kthcloud/podsh/internal/sshd"
 )
 
 type Server struct {
+	ctx       context.Context
 	sshServer *sshd.Server
 	address   string
+	logger    *slog.Logger
 }
 
 func New(opts ...Option) *Server {
@@ -19,8 +22,10 @@ func New(opts ...Option) *Server {
 	}
 
 	s := &Server{
+		ctx:       cfg.Ctx,
 		sshServer: sshd.New(sshd.WithConfig(cfg.SSHDConfig), sshd.WithHandler(cfg.Handler)),
 		address:   cfg.Address,
+		logger:    cfg.Logger,
 	}
 
 	return s

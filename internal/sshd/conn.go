@@ -83,7 +83,11 @@ Connecting to your pod...
 		go func() {
 			defer sess.close()
 
-			handler.HandleSession(sess)
+			select {
+			case <-ctx.Done():
+			case <-sess.ready:
+				handler.HandleSession(sess)
+			}
 
 			// if handler returns without Exit(), ensure clean shutdown
 			_ = sess.Exit(0)

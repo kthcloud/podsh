@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"log/slog"
 	"os"
@@ -8,14 +10,12 @@ import (
 
 	viperconf "github.com/Phillezi/common/config/viper"
 	"github.com/kthcloud/podsh/internal/defaults"
-	"github.com/kthcloud/podsh/internal/gateway"
-	ratelimiter "github.com/kthcloud/podsh/internal/ratelimit"
+	"github.com/kthcloud/podsh/internal/profiles"
 	"github.com/kthcloud/podsh/internal/server"
 	"github.com/kthcloud/podsh/internal/sshd"
+	"github.com/kthcloud/podsh/pkg/notice"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -28,59 +28,27 @@ var rootCmd = cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		banner()
 
-		dat, err := os.ReadFile(viper.GetString("dev-public-key-file"))
-		if err != nil {
-			log.Fatal(err)
+		prof := profiles.Get(profiles.ProfileKeyDev)
+
+		if prof.Mode() == profiles.ModeDev {
+			notice.Warn("Unsafe config", `Using the development profile, DONT USE THIS IN PRODUCTION!`)
 		}
 
-		// FIXME: ensure RBAC is used when actually deployed so we use a restricted client config that only has access to:
-		// - List pods in the deploy namespace
-		// - Exec pods in the deploy namespace
-		cfg, err := clientcmd.BuildConfigFromFlags("", viper.GetString("kubeconfig"))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		kc, err := kubernetes.NewForConfig(cfg)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		mockSigner, err := sshd.NewMockHostSigner()
+		cfg, err := prof.Config(cmd.Context(), viper.GetViper())
 		if err != nil {
 			return err
 		}
 
-		// TODO: set cfg
-		s := server.New(server.WithConfig(server.Config{
-			Ctx: cmd.Context(),
-
-			Address: viper.GetString("address"),
-
-			SSHDConfig: sshd.Config{
-				Ctx:                    cmd.Context(),
-				Signer:                 mockSigner,
-				PublicKeyAuthenticator: mkDevAutAuthh(dat),
-				Limiter:                ratelimiter.New(viper.GetFloat64("limit-rate"), viper.GetInt("limit-burst"), viper.GetDuration("limit-ttl")),
-				Hasher:                 ratelimiter.NewHasher([]byte("supersecret")),
-
-				Logger: slog.Default(),
-			},
-			Handler: gateway.NewHandler(slog.Default(),
-				gateway.NewLabelResolver(kc, viper.GetString("namespace")),
-				gateway.NewK8sExecutor(kc, cfg),
-			),
-
-			Logger: slog.Default(),
-		}))
+		s := server.New(server.WithConfig(*cfg))
 
 		if err := s.Validate(); err != nil {
+			notice.Fail("Validation failed", "Validation of the configuration failed with error: "+err.Error())
 			return err
 		}
 
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 
-		if err := s.Start(cmd.Context()); err != nil {
+		if err := s.Start(cmd.Context()); err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}
 

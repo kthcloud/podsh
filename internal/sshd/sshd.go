@@ -51,12 +51,8 @@ func New(opts ...Option) *Server {
 		hasher:     cfg.Hasher,
 		handler:    cfg.Handler,
 	}
-
-	if s.limiter != nil && s.hasher == nil {
-		s.hasher = ratelimiter.NewHasher([]byte("supersecret"))
-	}
 	if s.tarpit == nil {
-		s.tarpit = tarpit.NewTarpit(context.Background(), 10)
+		s.tarpit = tarpit.NewTarpit(s.ctx, 10)
 	}
 
 	return s
@@ -78,7 +74,7 @@ func (s *Server) Validate() (err error) {
 	if s.auth == nil {
 		err = errors.Join(ErrNoPublicKeyAuthenticator, err)
 	}
-	if s.limiter == nil && s.hasher == nil {
+	if s.limiter != nil && s.hasher == nil {
 		err = errors.Join(ErrRateLimiterNoHasher, err)
 	}
 	return
