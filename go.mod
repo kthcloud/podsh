@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/Phillezi/common/config v0.0.0-20250720144034-e66c0601d876
 	github.com/Phillezi/interrupt v0.0.2
-	github.com/pkg/sftp v1.13.10
+	github.com/phillezi/sftp v1.14.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.20.1

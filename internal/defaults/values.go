@@ -15,5 +15,5 @@ const (
 )
 
 const (
-	DefaultPodshHelperImage = "phillezi/podsftp:proc"
+	DefaultPodshHelperImage = "phillezi/podsftp:latest"
 )

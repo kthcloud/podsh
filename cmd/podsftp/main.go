@@ -8,8 +8,11 @@ import (
 
 	"github.com/Phillezi/interrupt/pkg/interrupt"
 	"github.com/Phillezi/interrupt/pkg/manager"
-	"github.com/pkg/sftp"
+	"github.com/phillezi/sftp"
 )
+
+// We access the main container from our ephemeral container like this
+const root = "/proc/1/root/"
 
 // Helper binary for sftp support, gets spawned as a ephemeral container
 func main() {
@@ -23,15 +26,14 @@ func main() {
 				os.Stdin,
 				os.Stdout,
 			},
-			// This doesnt seem to work, TODO: we should be able to make it work somehow
-			sftp.WithServerWorkingDirectory("/proc/1/root/"),
+			sftp.WithServerRawWorkingDirectory(root),
 		)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating sftp server: %s\n", err.Error())
 			cancel()
 			os.Exit(1)
 		}
-		fmt.Fprintf(os.Stderr, "Starting SFTP server [IN=STDIN,OUT=STDOUT]\n")
+		fmt.Fprintf(os.Stderr, "Starting SFTP server [IN=STDIN,OUT=STDOUT,BASE=%s]\n", root)
 		srv.Serve()
 	})
 }
