@@ -23,6 +23,8 @@ func main() {
 				os.Stdin,
 				os.Stdout,
 			},
+			// This doesnt seem to work, TODO: we should be able to make it work somehow
+			sftp.WithServerWorkingDirectory("/proc/1/root/"),
 		)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating sftp server: %s\n", err.Error())

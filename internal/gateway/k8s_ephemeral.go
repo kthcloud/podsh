@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 
@@ -152,6 +153,21 @@ func waitForHelperReady(
 	client kubernetes.Interface,
 	namespace, podName string,
 ) error {
+	pod, err := client.CoreV1().
+		Pods(namespace).
+		Get(ctx, podName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	running, err := isHelperRunning(pod)
+	if err != nil {
+		return err
+	}
+	if running {
+		return nil
+	}
+
 	watcher, err := client.CoreV1().
 		Pods(namespace).
 		Watch(ctx, metav1.ListOptions{
@@ -169,7 +185,7 @@ func waitForHelperReady(
 
 		case event, ok := <-watcher.ResultChan():
 			if !ok {
-				return nil // watch closed
+				return fmt.Errorf("watch channel closed")
 			}
 
 			pod, ok := event.Object.(*corev1.Pod)
@@ -177,11 +193,27 @@ func waitForHelperReady(
 				continue
 			}
 
-			for _, status := range pod.Status.EphemeralContainerStatuses {
-				if status.Name == "podsh-helper" && status.State.Running != nil {
-					return nil
-				}
+			running, err := isHelperRunning(pod)
+			if err != nil {
+				return err
+			}
+			if running {
+				return nil
 			}
 		}
 	}
+}
+
+func isHelperRunning(pod *corev1.Pod) (bool, error) {
+	for _, status := range pod.Status.EphemeralContainerStatuses {
+		if status.Name == "podsh-helper" &&
+			status.State.Running != nil {
+			return true, nil
+		}
+		if status.Name == "podsh-helper" && status.State.Terminated != nil {
+			return false, fmt.Errorf("ephemeral container exited: %s", status.State.Terminated.Reason)
+		}
+
+	}
+	return false, nil
 }

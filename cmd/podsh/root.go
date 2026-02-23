@@ -87,4 +87,7 @@ func init() {
 
 	rootCmd.Flags().Duration("limit-ttl", defaults.DefaultLimitTTL, "The ratelimit ttl to use")
 	viper.BindPFlag("limit-ttl", rootCmd.Flags().Lookup("limit-ttl"))
+
+	rootCmd.Flags().String("metrics-address", defaults.DefaultMetricsAddr, "The address the metrics server should use")
+	viper.BindPFlag("metrics-address", rootCmd.Flags().Lookup("metrics-address"))
 }

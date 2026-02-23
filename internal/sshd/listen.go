@@ -57,7 +57,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 		}
 	})
 
-	s.logger.Info("ssh server listening", "addr", addr)
+	s.logger.Info("ssh server listening", "addr", "ssh://"+addr)
 
 	select {
 	case <-done:

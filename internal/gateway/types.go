@@ -43,7 +43,7 @@ type Streams struct {
 }
 
 type SFTP interface {
-	Exec(ctx context.Context, t *Target, in io.ReadCloser, out io.WriteCloser) error
+	Exec(ctx context.Context, t *Target, in io.Reader, out io.Writer) error
 }
 
 type NopSFTP struct{}

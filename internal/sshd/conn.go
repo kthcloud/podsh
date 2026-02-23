@@ -87,6 +87,8 @@ Connecting to your pod...
 			case <-ctx.Done():
 			case <-sess.ready:
 				handler.HandleSession(sess)
+			case <-sess.sftpReady:
+				handler.HandleSFTP(sess)
 			}
 
 			// if handler returns without Exit(), ensure clean shutdown

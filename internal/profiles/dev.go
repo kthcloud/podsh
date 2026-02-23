@@ -77,6 +77,7 @@ func (DevProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Confi
 		Handler: gateway.NewHandler(slog.Default(),
 			gateway.NewLabelResolver(kc, v.GetString("namespace")),
 			gateway.NewK8sExecutor(kc, cfg),
+			gateway.NewK8sSFTP(kc, cfg),
 		),
 
 		Logger: slog.Default(),

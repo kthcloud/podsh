@@ -5,16 +5,19 @@ import (
 	"log/slog"
 
 	"github.com/kthcloud/podsh/internal/defaults"
+	"github.com/kthcloud/podsh/internal/metrics"
 	"github.com/kthcloud/podsh/internal/sshd"
 )
 
 type Config struct {
 	Ctx context.Context
 
-	Address string
+	Address        string
+	MetricsAddress string
 
 	SSHDConfig sshd.Config
 	Handler    sshd.SessionHandler
+	Metrics    metrics.Metrics
 
 	Logger *slog.Logger
 }
@@ -23,9 +26,11 @@ func DefaultConfig() Config {
 	return Config{
 		Ctx: context.Background(),
 
-		Address: defaults.DefaultBindAddress,
+		Address:        defaults.DefaultBindAddress,
+		MetricsAddress: defaults.DefaultMetricsAddr,
 
 		SSHDConfig: sshd.DefaultConfig(),
+		Metrics:    metrics.NewPrometheusMetrics(),
 
 		Logger: slog.New(slog.DiscardHandler),
 	}
@@ -38,9 +43,12 @@ func WithConfig(config Config) Option {
 		WithContext(config.Ctx)(cfg)
 		WithLogger(config.Logger)(cfg)
 
-		cfg.Address = config.Address
+		WithAddress(config.Address)(cfg)
+		WithMetricsAddress(config.MetricsAddress)(cfg)
+
 		cfg.SSHDConfig = config.SSHDConfig
 		WithHandler(config.Handler)(cfg)
+		WithMetrics(config.Metrics)(cfg)
 	}
 }
 
@@ -72,7 +80,28 @@ func WithHandler(handler sshd.SessionHandler) Option {
 }
 
 func WithAddress(address string) Option {
+	if address == "" {
+		return func(_ *Config) {}
+	}
 	return func(cfg *Config) {
 		cfg.Address = address
+	}
+}
+
+func WithMetricsAddress(address string) Option {
+	if address == "" {
+		return func(_ *Config) {}
+	}
+	return func(cfg *Config) {
+		cfg.MetricsAddress = address
+	}
+}
+
+func WithMetrics(metrics metrics.Metrics) Option {
+	if metrics == nil {
+		return func(_ *Config) {}
+	}
+	return func(cfg *Config) {
+		cfg.Metrics = metrics
 	}
 }

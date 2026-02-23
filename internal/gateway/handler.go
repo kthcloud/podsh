@@ -15,15 +15,68 @@ type Handler struct {
 	sftp     SFTP
 }
 
-func NewHandler(log *slog.Logger, r Resolver, e Executor) *Handler {
+func NewHandler(log *slog.Logger, r Resolver, e Executor, s SFTP) *Handler {
 	return &Handler{
 		log:      log,
 		resolver: r,
 		exec:     e,
+		sftp:     s,
 	}
 }
 
 func (h *Handler) HandleSFTP(sess sshd.Session) {
+	ctx := sess.Context()
+	log := h.log.With(
+		"subsystem", "sftp",
+		"user", sess.Identity().User,
+		"userID", sess.Identity().UserID,
+		"addr", sess.Identity().RemoteAddr,
+		"requestedHostname", sess.Identity().RequestedHostname,
+	)
+
+	if ctx.Err() != nil {
+		log.Info("Session cancelled", "error", ctx.Err())
+		return
+	}
+
+	// resolve hostname target
+	hostname := sess.Identity().RequestedHostname
+	if hostname == "" {
+		log.Debug("missing hostname metadata")
+		_ = sess.Exit(1)
+		return
+	}
+
+	target, err := h.resolver.Resolve(ctx, hostname, sess.Identity())
+	if err != nil {
+		log.Info("resolve failed", "err", err)
+		_ = sess.Exit(1)
+		return
+	}
+
+	log = log.With(
+		"ns", target.Namespace,
+		"pod", target.Pod,
+		"container", target.Container,
+	)
+
+	log.Info("sftp session start")
+
+	if err := h.sftp.Exec(ctx, target, sshd.SessionReaderCloser{
+		Reader:        sess.Stdin(),
+		SessionCloser: sshd.SessionCloser{Session: sess},
+	},
+		sshd.SessionWriterCloser{
+			Writer:        sess.Stdout(),
+			SessionCloser: sshd.SessionCloser{Session: sess},
+		}); err != nil {
+		log.Error("exec failed", "err", err)
+		_ = sess.Exit(1)
+		return
+	}
+
+	log.Info("session end", "code", 0)
+	_ = sess.Exit(0)
 }
 
 func (h *Handler) HandleSession(sess sshd.Session) {

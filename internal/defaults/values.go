@@ -5,6 +5,7 @@ import "time"
 const (
 	DefaultNamespace   = "deploy"
 	DefaultBindAddress = "127.0.0.1:2222"
+	DefaultMetricsAddr = "127.0.0.1:8080"
 )
 
 const (
@@ -14,5 +15,5 @@ const (
 )
 
 const (
-	DefaultPodshHelperImage = "ghcr.io/kthcloud/podsftp:latest"
+	DefaultPodshHelperImage = "phillezi/podsftp:proc"
 )

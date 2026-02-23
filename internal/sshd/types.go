@@ -41,4 +41,23 @@ type Session interface {
 
 type SessionHandler interface {
 	HandleSession(Session)
+	HandleSFTP(Session)
+}
+
+type SessionCloser struct {
+	Session
+}
+
+func (s SessionCloser) Close() error {
+	return s.Exit(0)
+}
+
+type SessionWriterCloser struct {
+	io.Writer
+	SessionCloser
+}
+
+type SessionReaderCloser struct {
+	io.Reader
+	SessionCloser
 }

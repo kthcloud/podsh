@@ -3,7 +3,7 @@ package gateway
 import (
 	"context"
 	"fmt"
-	"io"
+	"log"
 
 	"github.com/kthcloud/podsh/internal/sshd"
 
@@ -102,25 +102,6 @@ func (k *K8sExecutor) ExecRaw(ctx context.Context, t *Target, s Streams) error {
 	})
 }
 
-func (k *K8sExecutor) UploadFile(ctx context.Context, t *Target, data io.Reader, remotePath string) error {
-	t.Command = []string{"sh", "-c", fmt.Sprintf("cat > %s", remotePath)}
-	return k.ExecRaw(ctx, t, Streams{
-		Stdin: data,
-	})
-}
-
-func (k *K8sExecutor) DownloadFile(ctx context.Context, t *Target, remotePath string, out io.Writer) error {
-	t.Command = []string{"cat", remotePath}
-	return k.ExecRaw(ctx, t, Streams{
-		Stdout: out,
-	})
-}
-
-func (k *K8sExecutor) Mkdir(ctx context.Context, t *Target, remoteDir string) error {
-	t.Command = []string{"mkdir", "-p", remoteDir}
-	return k.ExecRaw(ctx, t, Streams{})
-}
-
 type resizeQueue struct {
 	Resize <-chan sshd.ResizeEvent
 }
@@ -130,6 +111,7 @@ func (r *resizeQueue) Next() *remotecommand.TerminalSize {
 	if !ok {
 		return nil
 	}
+	log.Println("resize term", "witdh", ev.Width, "height", ev.Height)
 	return &remotecommand.TerminalSize{
 		Width:  uint16(ev.Width),
 		Height: uint16(ev.Height),

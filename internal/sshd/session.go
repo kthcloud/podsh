@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -35,7 +34,8 @@ type session struct {
 	exitOnce  sync.Once
 	closeOnce sync.Once
 
-	ready chan struct{} // closed when shell request arrives
+	ready     chan struct{} // closed when shell request arrives
+	sftpReady chan struct{} // closed when sftp wanted
 }
 
 func newSession(
@@ -49,17 +49,18 @@ func newSession(
 	ctx, c := context.WithCancel(parent)
 
 	s := &session{
-		ctx:      ctx,
-		cancel:   func() { c(); cancel() },
-		conn:     conn,
-		channel:  ch,
-		reqs:     reqs,
-		logger:   logger,
-		stdin:    ch,
-		stdout:   ch,
-		stderr:   ch.Stderr(),
-		resizeCh: make(chan ResizeEvent, 8),
-		ready:    make(chan struct{}),
+		ctx:       ctx,
+		cancel:    func() { c(); cancel() },
+		conn:      conn,
+		channel:   ch,
+		reqs:      reqs,
+		logger:    logger,
+		stdin:     ch,
+		stdout:    ch,
+		stderr:    ch.Stderr(),
+		resizeCh:  make(chan ResizeEvent, 8),
+		ready:     make(chan struct{}),
+		sftpReady: make(chan struct{}),
 	}
 
 	// recover identity from auth callback
@@ -203,43 +204,11 @@ func (s *session) startSubsystem(name string) error {
 	switch name {
 
 	case "sftp":
-		return s.runSFTP()
-
+		close(s.sftpReady)
+		return nil
 	default:
 		return fmt.Errorf("unsupported subsystem: %s", name)
 	}
-}
-
-func (s *session) runSFTP() error {
-	server, err := sftp.NewServer(
-		s.channel,
-		sftp.WithDebug(nil),
-		sftp.WithFS(sftp.NewMemFS()),
-	)
-	if err != nil {
-		return err
-	}
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		if err := server.Serve(); err != nil {
-			s.logger.Error("error on sftp server", "error", err)
-		}
-	}()
-
-	go func() {
-		select {
-		case <-s.ctx.Done():
-		case <-done:
-		}
-		s.logger.Debug("closing sftp server")
-		_ = server.Close()
-	}()
-
-	s.logger.Debug("sftp server started")
-
-	return nil
 }
 
 func parsePtyReq(b []byte) (term string, cols, rows int, ok bool) {
