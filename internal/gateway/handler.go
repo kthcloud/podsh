@@ -12,6 +12,7 @@ type Handler struct {
 	log      *slog.Logger
 	resolver Resolver
 	exec     Executor
+	sftp     SFTP
 }
 
 func NewHandler(log *slog.Logger, r Resolver, e Executor) *Handler {
@@ -20,6 +21,9 @@ func NewHandler(log *slog.Logger, r Resolver, e Executor) *Handler {
 		resolver: r,
 		exec:     e,
 	}
+}
+
+func (h *Handler) HandleSFTP(sess sshd.Session) {
 }
 
 func (h *Handler) HandleSession(sess sshd.Session) {

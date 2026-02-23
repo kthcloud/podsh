@@ -15,6 +15,8 @@ require (
 	k8s.io/client-go v0.35.1
 )
 
+replace github.com/pkg/sftp => ../sftp/
+
 require (
 	github.com/Phillezi/common/utils v0.0.0-20250720144034-e66c0601d876 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

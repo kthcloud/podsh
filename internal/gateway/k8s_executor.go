@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/kthcloud/podsh/internal/sshd"
 
@@ -71,6 +72,53 @@ func (k *K8sExecutor) Exec(ctx context.Context, t *Target, pty sshd.Pty, s Strea
 	}
 
 	return 0, nil
+}
+
+func (k *K8sExecutor) ExecRaw(ctx context.Context, t *Target, s Streams) error {
+	req := k.Client.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(t.Pod).
+		Namespace(t.Namespace).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: t.Container,
+			Command:   t.Command,
+			Stdin:     s.Stdin != nil,
+			Stdout:    s.Stdout != nil,
+			Stderr:    s.Stderr != nil,
+			TTY:       false, // IMPORTANT
+		}, scheme.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(k.Rest, "POST", req.URL())
+	if err != nil {
+		return err
+	}
+
+	return exec.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdin:  s.Stdin,
+		Stdout: s.Stdout,
+		Stderr: s.Stderr,
+		Tty:    false,
+	})
+}
+
+func (k *K8sExecutor) UploadFile(ctx context.Context, t *Target, data io.Reader, remotePath string) error {
+	t.Command = []string{"sh", "-c", fmt.Sprintf("cat > %s", remotePath)}
+	return k.ExecRaw(ctx, t, Streams{
+		Stdin: data,
+	})
+}
+
+func (k *K8sExecutor) DownloadFile(ctx context.Context, t *Target, remotePath string, out io.Writer) error {
+	t.Command = []string{"cat", remotePath}
+	return k.ExecRaw(ctx, t, Streams{
+		Stdout: out,
+	})
+}
+
+func (k *K8sExecutor) Mkdir(ctx context.Context, t *Target, remoteDir string) error {
+	t.Command = []string{"mkdir", "-p", remoteDir}
+	return k.ExecRaw(ctx, t, Streams{})
 }
 
 type resizeQueue struct {

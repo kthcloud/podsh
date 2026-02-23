@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/kthcloud/podsh/internal/sshd"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,12 +13,14 @@ import (
 type LabelResolver struct {
 	kubeClient *kubernetes.Clientset
 	namespace  string
+	logger     *slog.Logger
 }
 
 func NewLabelResolver(kc *kubernetes.Clientset, namespace string) *LabelResolver {
 	lr := &LabelResolver{
 		kubeClient: kc,
 		namespace:  namespace,
+		logger:     slog.Default(), // TODO: get from args
 	}
 
 	return lr
@@ -36,10 +39,14 @@ func (r *LabelResolver) Resolve(ctx context.Context, hostname string, id sshd.Id
 	}
 
 	for _, pod := range pods.Items {
+		var containerName string = pod.Spec.Containers[0].Name
+		if len(pod.Spec.Containers) > 1 {
+			r.logger.Warn("resolved to pod with more than one container, defaulting to", "containerName", containerName)
+		}
 		return &Target{
 			Namespace: pod.Namespace,
 			Pod:       pod.Name,
-			Container: pod.Spec.Containers[0].Name,
+			Container: containerName,
 			// some way to specify shell would be nice
 			Command: []string{"/bin/sh"},
 		}, nil

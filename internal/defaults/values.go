@@ -12,3 +12,7 @@ const (
 	DefaultLimitBurst = 12
 	DefaultLimitTTL   = 30 * time.Second
 )
+
+const (
+	DefaultPodshHelperImage = "ghcr.io/kthcloud/podsftp:latest"
+)

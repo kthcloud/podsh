@@ -2,6 +2,7 @@ package profiles
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -9,9 +10,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+var ErrProfileNotFound = errors.New("profile not found")
+
 var profiles = map[ProfileKey]Profile{
-	ProfileKeyDev:  DevProfileImpl{},
-	ProfileKeyProd: nil,
+	ProfileKeyDev: DevProfileImpl{},
+	// ProfileKeyProd: nil,
 }
 
 type Profile interface {
@@ -26,8 +29,11 @@ const (
 	ModeProd
 )
 
-func Get(key ProfileKey) Profile {
-	return profiles[key]
+func Get(key ProfileKey) (Profile, error) {
+	if p, ok := profiles[key]; ok {
+		return p, nil
+	}
+	return nil, ErrProfileNotFound
 }
 
 type ProfileKey string

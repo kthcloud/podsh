@@ -12,12 +12,9 @@ import (
 	"github.com/kthcloud/podsh/internal/defaults"
 	"github.com/kthcloud/podsh/internal/profiles"
 	"github.com/kthcloud/podsh/internal/server"
-	"github.com/kthcloud/podsh/internal/sshd"
 	"github.com/kthcloud/podsh/pkg/notice"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"golang.org/x/crypto/ssh"
 )
 
 var rootCmd = cobra.Command{
@@ -28,7 +25,10 @@ var rootCmd = cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		banner()
 
-		prof := profiles.Get(profiles.ProfileKeyDev)
+		prof, err := profiles.Get(profiles.ProfileKey(viper.GetString("profile")))
+		if err != nil {
+			return err
+		}
 
 		if prof.Mode() == profiles.ModeDev {
 			notice.Warn("Unsafe config", `Using the development profile, DONT USE THIS IN PRODUCTION!`)
@@ -40,9 +40,7 @@ var rootCmd = cobra.Command{
 		}
 
 		s := server.New(server.WithConfig(*cfg))
-
 		if err := s.Validate(); err != nil {
-			notice.Fail("Validation failed", "Validation of the configuration failed with error: "+err.Error())
 			return err
 		}
 
@@ -64,6 +62,11 @@ func init() {
 		log.Fatal(err)
 	}
 
+	profileFlag, _ := profiles.NewProfileFlag(profiles.ProfileKeyDev)
+
+	rootCmd.Flags().Var(profileFlag, "profile", "The profile")
+	viper.BindPFlag("profile", rootCmd.Flags().Lookup("profile"))
+
 	rootCmd.Flags().String("address", defaults.DefaultBindAddress, "The server address")
 	viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))
 
@@ -84,22 +87,4 @@ func init() {
 
 	rootCmd.Flags().Duration("limit-ttl", defaults.DefaultLimitTTL, "The ratelimit ttl to use")
 	viper.BindPFlag("limit-ttl", rootCmd.Flags().Lookup("limit-ttl"))
-}
-
-func mkDevAutAuthh(devPublicKey []byte) sshd.PublicKeyAuthenticator {
-	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(devPublicKey)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pubKeyBytes := pubKey.Marshal()
-
-	// TODO: connect to go-deploy
-	return sshd.NewMapAuthenticator(map[string]*sshd.Identity{
-		string(pubKeyBytes): {
-			User:      "user@kth.se",
-			UserID:    "4efea96b-2d6b-41f6-96a2-656f18d6f8d1",
-			PublicKey: pubKeyBytes,
-		},
-	})
 }

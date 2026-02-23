@@ -214,6 +214,7 @@ func (s *session) runSFTP() error {
 	server, err := sftp.NewServer(
 		s.channel,
 		sftp.WithDebug(nil),
+		sftp.WithFS(sftp.NewMemFS()),
 	)
 	if err != nil {
 		return err

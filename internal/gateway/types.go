@@ -41,3 +41,13 @@ type Streams struct {
 	Stderr io.Writer
 	Resize <-chan sshd.ResizeEvent
 }
+
+type SFTP interface {
+	Exec(ctx context.Context, t *Target, in io.ReadCloser, out io.WriteCloser) error
+}
+
+type NopSFTP struct{}
+
+func (NopSFTP) Exec(_ context.Context, _ *Target, _ io.ReadCloser, _ io.WriteCloser) error {
+	return fmt.Errorf("not impl")
+}
