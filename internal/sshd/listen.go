@@ -2,6 +2,7 @@ package sshd
 
 import (
 	"context"
+	"errors"
 	"net"
 	"sync"
 	"time"
@@ -55,7 +56,12 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 			}
 
 			backoff := 1 * time.Millisecond
-			for !eg.TryGo(func() error { return s.connector.Handle(conn) }) {
+			for !eg.TryGo(func() error {
+				if err := s.connector.Handle(conn); err != nil && !errors.Is(err, context.Canceled) {
+					return err
+				}
+				return nil
+			}) {
 				s.logger.Error("Used up all goroutines and failed to handle new connection, sleeping for", "duration", backoff)
 				select {
 				case <-time.After(backoff):

@@ -3,8 +3,11 @@ package sshd
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"net"
+	"time"
 
 	"github.com/kthcloud/podsh/pkg/ssh/requests"
 	"golang.org/x/crypto/ssh"
@@ -14,6 +17,7 @@ import (
 var (
 	ErrNotPermitted       = errors.New("connection is not permitted")
 	ErrGoroutinesExceeded = errors.New("goroutine count (per connection) exeeded for connection")
+	ErrSessionTimeout     = errors.New("session timed out")
 )
 
 type ChannelType = string
@@ -46,19 +50,95 @@ type Connector interface {
 	Handle(conn net.Conn) error
 }
 
+type Context interface {
+	context.Context
+	Identity() Identity
+	Stdin() io.Reader
+	Stdout() io.Writer
+	Stderr() io.Writer
+}
+
+type ShellContext interface {
+	Context
+	Resize() <-chan ResizeEvent
+}
+
+type BaseContext struct {
+	ctx      context.Context
+	identity Identity
+	ch       ssh.Channel
+}
+
+func NewBaseContext(ctx context.Context, identity Identity, ch ssh.Channel) BaseContext {
+	return BaseContext{
+		ctx:      ctx,
+		identity: identity,
+		ch:       ch,
+	}
+}
+
+func (bc BaseContext) Stdin() io.Reader { return bc.ch }
+
+func (bc BaseContext) Stdout() io.Writer { return bc.ch }
+
+func (bc BaseContext) Stderr() io.Writer { return bc.ch.Stderr() }
+
+func (bc BaseContext) Identity() Identity {
+	return bc.identity
+}
+
+func (bc BaseContext) Deadline() (deadline time.Time, ok bool) {
+	return bc.ctx.Deadline()
+}
+
+func (bc BaseContext) Done() <-chan struct{} {
+	return bc.ctx.Done()
+}
+
+func (bc BaseContext) Err() error {
+	return bc.ctx.Err()
+}
+
+func (bc BaseContext) Value(key any) any {
+	return bc.ctx.Value(key)
+}
+
+type ShellHandler interface {
+	HandleShell(ctx ShellContext) error
+	HandleExec(ctx Context, command ...string) error
+}
+
+type ForwardHandler interface {
+	HandleForward(ctx Context, request requests.DirectTCPIP) error
+}
+
+type SFTPHandler interface {
+	HandleSFTP(ctx Context) error
+}
+
+type Handler interface {
+	ShellHandler
+	ForwardHandler
+	SFTPHandler
+}
+
 type ConnectorImpl struct {
-	ctx                 context.Context
-	logger              *slog.Logger
-	config              *ssh.ServerConfig
+	ctx    context.Context
+	logger *slog.Logger
+	config *ssh.ServerConfig
+
+	handler Handler
+
 	perConnGoroutineCap int
 }
 
-func NewConnectorImpl(ctx context.Context, logger *slog.Logger, config *ssh.ServerConfig) *ConnectorImpl {
+func NewConnectorImpl(ctx context.Context, logger *slog.Logger, config *ssh.ServerConfig, handler Handler) *ConnectorImpl {
 	return &ConnectorImpl{
 		ctx:                 ctx,
 		logger:              logger,
 		config:              config,
 		perConnGoroutineCap: 10,
+		handler:             handler,
 	}
 }
 
@@ -100,10 +180,13 @@ func (ci *ConnectorImpl) Handle(conn net.Conn) error {
 	eg.SetLimit(ci.perConnGoroutineCap)
 
 	if !eg.TryGo(func() error {
-		return handleGlobalReqs(reqs, log)
+		return handleGlobalReqs(ci.ctx, reqs, log)
 	}) {
 		return ErrGoroutinesExceeded
 	}
+
+	// TODO: keep track of forwards
+	forwarded := make(map[string]bool)
 
 	for channel := range chans {
 		switch channel.ChannelType() {
@@ -114,16 +197,14 @@ func (ci *ConnectorImpl) Handle(conn net.Conn) error {
 				continue
 			}
 
+			bctx := NewBaseContext(ci.ctx, identity, ch)
+
 			if !eg.TryGo(func() error {
 				defer ch.Close()
-				if err := handleSessionCh(chReqs, log); err != nil {
-					log.Error("Session exit", "error", err)
-					return err
-				}
-				return nil
+				return handleSessionCh(bctx, chReqs, log, ci.handler)
 			}) {
 				ch.Close()
-				log.Error("goroutines cap exceeded by cap, cannot handle", "channelType", channel.ChannelType())
+				log.Error("goroutines cap exceeded, cannot handle", "channelType", channel.ChannelType())
 				continue
 			}
 		case ChannelTypeDirectTCPIP:
@@ -133,26 +214,36 @@ func (ci *ConnectorImpl) Handle(conn net.Conn) error {
 				continue
 			}
 
-			ch, chReqs, err := channel.Accept()
+			key := fmt.Sprintf("%s:%d", fwRq.DestAddr, fwRq.DestPort)
+			fw, exists := forwarded[key]
+			if !exists {
+				// open new k8s tunnel
+				forwarded[key] = true
+			} else {
+				log.Debug("dedup ch open", "key", key)
+			}
+			_ = fw
+
+			ch, _, err := channel.Accept()
 			if err != nil {
 				log.Error("error accepting channel", "error", err)
 				continue
 			}
 
+			// bctx := NewBaseContext(ci.ctx, identity, ch)
+
 			if eg.TryGo(func() error {
-				defer ch.Close()
-				if err := handleDirectTCPIP(chReqs, fwRq, log); err != nil {
-					log.Error("Forward exit", "error", err)
-					return err
-				}
-				return nil
+				// defer ch.Close()
+				return ch.Close()
+				// return handleDirectTCPIP(bctx, chReqs, fwRq, log)
 			}) {
 				ch.Close()
-				log.Error("goroutines cap exceeded by cap, cannot handle", "channelType", channel.ChannelType())
+				log.Error("goroutines cap exceeded, cannot handle", "channelType", channel.ChannelType())
 				continue
 			}
 
 		default:
+			log.Debug("Rejected unsupported channel", "channelType", channel.ChannelType())
 			channel.Reject(ssh.UnknownChannelType, "Unsupported SSH channel")
 			continue
 		}
@@ -162,37 +253,75 @@ func (ci *ConnectorImpl) Handle(conn net.Conn) error {
 }
 
 type SessionV2 struct {
-	pty   *requests.PTYReq
-	shell chan struct{}
+	BaseContext
+	shell    chan struct{}
+	exec     chan string
+	resizeCh chan ResizeEvent
 }
 
-func NewSession() *SessionV2 {
+func NewSession(ctx BaseContext) *SessionV2 {
 	return &SessionV2{
-		shell: make(chan struct{}),
+		BaseContext: ctx,
+		shell:       make(chan struct{}),
+		exec:        make(chan string, 1),
+		resizeCh:    make(chan ResizeEvent, 8),
 	}
 }
 
-func handleSessionCh(reqs <-chan *ssh.Request, logger *slog.Logger) (err error) {
+func (s *SessionV2) Resize() <-chan ResizeEvent { return s.resizeCh }
+
+func handleSessionCh(ctx BaseContext, reqs <-chan *ssh.Request, logger *slog.Logger, handler ShellHandler) (err error) {
 	logger.Info("handleSession")
 	defer logger.Debug("[TRACE] handleSession exit")
 
-	sess := NewSession()
-	for req := range reqs {
-		switch req.Type {
-		case RequestTypePtyReq:
-			var ptyReq requests.PTYReq
-			if err := ssh.Unmarshal(req.Payload, &ptyReq); err != nil {
-				logger.Error("Failed to unmarshal pty req", "error", err)
-				_ = req.Reply(false, nil)
-				continue
+	childCtx, cancel := context.WithCancel(ctx)
+	sess := NewSession(ctx)
+
+	var eg errgroup.Group
+	eg.Go(func() error {
+		defer cancel()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(2 * time.Second):
+			return ErrSessionTimeout
+		case <-sess.shell:
+			return handler.HandleShell(sess)
+		case command, ok := <-sess.exec:
+			if !ok {
+				return nil
 			}
-			sess.pty = &ptyReq
-			logger.Info("Got PTY", "ptyReq", ptyReq)
-			_ = req.Reply(true, nil)
-		case RequestTypeShell:
-			if sess.pty == nil {
-				_ = req.Reply(false, nil)
-			} else {
+			err := handler.HandleExec(sess, "-c", command)
+			code := 0
+			if err != nil {
+				code = 1
+			}
+			status := struct{ Status uint32 }{uint32(code)}
+			_, errs := sess.ch.SendRequest(ResponseTypeExitStatus, false, ssh.Marshal(&status))
+			return errors.Join(errs, err)
+		}
+	})
+
+	for {
+		select {
+		case <-childCtx.Done():
+			return errors.Join(eg.Wait(), ctx.Err())
+		case req, ok := <-reqs:
+			if !ok {
+				return eg.Wait()
+			}
+			switch req.Type {
+			case RequestTypePtyReq:
+				var ptyReq requests.PTYReq
+				if err := ssh.Unmarshal(req.Payload, &ptyReq); err != nil {
+					logger.Error("Failed to unmarshal pty req", "error", err)
+					_ = req.Reply(false, nil)
+					continue
+				}
+				sess.resizeCh <- ResizeEvent{Width: int(ptyReq.Cols), Height: int(ptyReq.Rows)}
+				logger.Info("Got PTY", "ptyReq", ptyReq)
+				_ = req.Reply(true, nil)
+			case RequestTypeShell:
 				select {
 				case <-sess.shell:
 					logger.Warn("shell already received for channel but received a new shell request, SSH spec only allows one shell to get ok per channel")
@@ -201,39 +330,61 @@ func handleSessionCh(reqs <-chan *ssh.Request, logger *slog.Logger) (err error) 
 					close(sess.shell)
 					_ = req.Reply(true, nil)
 				}
+			case RequestTypeExec:
+				var execReq requests.ExecRequest
+				if err := ssh.Unmarshal(req.Payload, &execReq); err != nil {
+					logger.Error("Failed to unmarshal pty req", "error", err)
+					_ = req.Reply(false, nil)
+					continue
+				}
+				sess.exec <- execReq.Command
+				logger.Info("Got exec", "execReq", execReq)
+				_ = req.Reply(true, nil)
+			default:
+				logger.Debug("ignoring unknown request", "type", req.Type)
+				_ = req.Reply(false, nil)
 			}
-		default:
-			logger.Debug("ignoring unknown request", "type", req.Type)
-			_ = req.Reply(false, nil)
 		}
 	}
-
-	return
 }
 
-func handleDirectTCPIP(reqs <-chan *ssh.Request, forwardRequest requests.DirectTCPIP, logger *slog.Logger) (err error) {
+func handleDirectTCPIP(ctx Context, reqs <-chan *ssh.Request, forwardRequest requests.DirectTCPIP, logger *slog.Logger) (err error) {
 	logger.Info("handleDirectTCPIP", "request", forwardRequest)
 	defer logger.Debug("[TRACE] handleDirectTCPIP exit")
-	for req := range reqs {
-		switch req.Type {
-		default:
-			logger.Debug("ignoring unknown request", "type", req.Type)
-			_ = req.Reply(false, nil)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case req, ok := <-reqs:
+			if !ok {
+				return
+			}
+			switch req.Type {
+			default:
+				logger.Debug("ignoring unknown request", "type", req.Type)
+				_ = req.Reply(false, nil)
+			}
 		}
 	}
-	return
 }
 
-func handleGlobalReqs(reqs <-chan *ssh.Request, logger *slog.Logger) (err error) {
-	for req := range reqs {
-		switch req.Type {
-		case RequestTypeKeepalive:
-			_ = req.Reply(true, nil)
-		default:
-			logger.Debug("ignoring global request", "type", req.Type)
-			_ = req.Reply(false, nil)
+func handleGlobalReqs(ctx context.Context, reqs <-chan *ssh.Request, logger *slog.Logger) (err error) {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case req, ok := <-reqs:
+			if !ok {
+				return
+			}
+			switch req.Type {
+			case RequestTypeKeepalive:
+				_ = req.Reply(true, nil)
+			default:
+				logger.Debug("ignoring global request", "type", req.Type)
+				_ = req.Reply(false, nil)
+			}
 		}
 	}
-
-	return
 }

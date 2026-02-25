@@ -16,7 +16,8 @@ type Config struct {
 	Limiter                ratelimiter.Limiter
 	Hasher                 ratelimiter.Hasher
 
-	Handler SessionHandler
+	Handler  SessionHandler
+	Handler2 Handler
 
 	Logger *slog.Logger
 }
@@ -42,6 +43,7 @@ func WithConfig(config Config) Option {
 		cfg.Hasher = config.Hasher
 
 		cfg.Handler = config.Handler
+		cfg.Handler2 = config.Handler2
 	}
 }
 

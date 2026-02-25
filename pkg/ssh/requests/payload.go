@@ -1,3 +1,4 @@
+// Package requests contain structs for different request payloads.
 package requests
 
 // PTYReq represents the payload sent with the pty-req request,
@@ -19,4 +20,9 @@ type DirectTCPIP struct {
 	DestPort   uint32
 	OriginAddr string
 	OriginPort uint32
+}
+
+// ExecRequest represents the payload sent with the exec request,
+type ExecRequest struct {
+	Command string
 }

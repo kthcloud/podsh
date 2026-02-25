@@ -58,16 +58,15 @@ func New(opts ...Option) *Server {
 	}
 
 	if s.connector == nil {
-
-		cfg := &ssh.ServerConfig{
+		scfg := &ssh.ServerConfig{
 			PublicKeyCallback: s.publicKeyCallback(s.ctx, s.logger),
 			ServerVersion:     "SSH-2.0-podsh",
 			BannerCallback: func(conn ssh.ConnMetadata) string {
 				return "refactorred connector impl\n"
 			},
 		}
-		cfg.AddHostKey(s.hostSigner)
-		s.connector = NewConnectorImpl(s.ctx, s.logger, cfg)
+		scfg.AddHostKey(s.hostSigner)
+		s.connector = NewConnectorImpl(s.ctx, s.logger, scfg, cfg.Handler2)
 	}
 
 	return s

@@ -93,7 +93,7 @@ func TestConnector(t *testing.T) {
 		defer client.Close()
 	}()
 
-	connector := sshd.NewConnectorImpl(t.Context(), slog.Default(), serverConfig)
+	connector := sshd.NewConnectorImpl(t.Context(), slog.Default(), serverConfig, nil)
 
 	if err := connector.Handle(serverConn); err == nil {
 		t.Fail()
