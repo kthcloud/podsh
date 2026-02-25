@@ -1,0 +1,22 @@
+package requests
+
+// PTYReq represents the payload sent with the pty-req request,
+// Format has been determined from:
+// https://datatracker.ietf.org/doc/html/rfc4254#section-6.2
+type PTYReq struct {
+	TERM     string // TERM environment variable value
+	Cols     uint32 // terminal width in characters
+	Rows     uint32 // terminal height in rows
+	WidthPx  uint32 // terminal width in pixels
+	HeightPx uint32 // terminal height in pixels
+	Mode     string // encoded terminal modes
+}
+
+// DirectTCPIP represents the payload sent with the direct-tcpip request,
+// https://datatracker.ietf.org/doc/html/rfc4254#section-7.2
+type DirectTCPIP struct {
+	DestAddr   string
+	DestPort   uint32
+	OriginAddr string
+	OriginPort uint32
+}

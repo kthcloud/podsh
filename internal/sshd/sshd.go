@@ -32,6 +32,8 @@ type Server struct {
 	hasher     ratelimiter.Hasher
 	tarpit     *tarpit.Tarpit
 
+	connector Connector
+
 	mu sync.RWMutex
 }
 
@@ -53,6 +55,19 @@ func New(opts ...Option) *Server {
 	}
 	if s.tarpit == nil {
 		s.tarpit = tarpit.NewTarpit(s.ctx, 10)
+	}
+
+	if s.connector == nil {
+
+		cfg := &ssh.ServerConfig{
+			PublicKeyCallback: s.publicKeyCallback(s.ctx, s.logger),
+			ServerVersion:     "SSH-2.0-podsh",
+			BannerCallback: func(conn ssh.ConnMetadata) string {
+				return "refactorred connector impl\n"
+			},
+		}
+		cfg.AddHostKey(s.hostSigner)
+		s.connector = NewConnectorImpl(s.ctx, s.logger, cfg)
 	}
 
 	return s

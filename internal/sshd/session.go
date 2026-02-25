@@ -87,6 +87,10 @@ func newSession(
 	return s
 }
 
+type execRequest struct {
+	Command string
+}
+
 func (s *session) handleRequests() {
 	// defer s.cancel()
 
@@ -124,6 +128,14 @@ func (s *session) handleRequests() {
 			return
 
 		case "exec":
+			var execReq execRequest
+
+			if err := ssh.Unmarshal(req.Payload, &execReq); err != nil {
+				s.logger.Error("failed to parse exec payload", "eror", err)
+				_ = req.Reply(false, nil)
+			}
+
+			s.logger.Info("exec comman req", execReq.Command)
 			// not supported in v1
 			_ = req.Reply(false, nil)
 
