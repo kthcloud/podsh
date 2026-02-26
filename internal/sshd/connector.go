@@ -46,6 +46,12 @@ const (
 	ResponseTypeExitStatus ResponseType = "exit-status"
 )
 
+type SubsystemType = string
+
+const (
+	SubsystemTypeSFTP SubsystemType = "sftp"
+)
+
 type Connector interface {
 	Handle(conn net.Conn) error
 }
@@ -106,10 +112,16 @@ func (bc BaseContext) Value(key any) any {
 type ShellHandler interface {
 	HandleShell(ctx ShellContext) error
 	HandleExec(ctx Context, command ...string) error
+	SFTPHandler
+}
+
+type Forwarder interface {
+	Forward(in io.Reader, out io.Writer) error
+	Close() error
 }
 
 type ForwardHandler interface {
-	HandleForward(ctx Context, request requests.DirectTCPIP) error
+	OpenTunnel(ctx context.Context, identity Identity, req requests.DirectTCPIP) (Forwarder, error)
 }
 
 type SFTPHandler interface {
@@ -119,7 +131,6 @@ type SFTPHandler interface {
 type Handler interface {
 	ShellHandler
 	ForwardHandler
-	SFTPHandler
 }
 
 type ConnectorImpl struct {
@@ -185,68 +196,110 @@ func (ci *ConnectorImpl) Handle(conn net.Conn) error {
 		return ErrGoroutinesExceeded
 	}
 
-	// TODO: keep track of forwards
-	forwarded := make(map[string]bool)
+	forwarded := make(map[string]Forwarder)
 
-	for channel := range chans {
-		switch channel.ChannelType() {
-		case ChannelTypeSession:
-			ch, chReqs, err := channel.Accept()
-			if err != nil {
-				log.Error("error accepting channel", "error", err)
+loop:
+	for {
+		select {
+		case <-ci.ctx.Done():
+			break loop
+		case channel, ok := <-chans:
+			if !ok {
+				break loop
+			}
+			switch channel.ChannelType() {
+			case ChannelTypeSession:
+				ch, chReqs, err := channel.Accept()
+				if err != nil {
+					log.Error("error accepting channel", "error", err)
+					continue
+				}
+
+				bctx := NewBaseContext(ci.ctx, identity, ch)
+
+				if !eg.TryGo(func() error {
+					defer ch.Close()
+					if err := handleSessionCh(bctx, chReqs, log, ci.handler); err != nil {
+						status := struct{ Status uint32 }{1}
+						ch.SendRequest(ResponseTypeExitStatus, false, ssh.Marshal(status))
+						return err
+					}
+					status := struct{ Status uint32 }{0}
+					ch.SendRequest(ResponseTypeExitStatus, false, ssh.Marshal(status))
+					return nil
+				}) {
+					status := struct{ Status uint32 }{1}
+					ch.SendRequest(ResponseTypeExitStatus, false, ssh.Marshal(status))
+					ch.Close()
+					log.Error("goroutines cap exceeded, cannot handle", "channelType", channel.ChannelType())
+					continue
+				}
+			case ChannelTypeDirectTCPIP:
+				var fwRq requests.DirectTCPIP
+				if err := ssh.Unmarshal(channel.ExtraData(), &fwRq); err != nil {
+					channel.Reject(ssh.Prohibited, "Bad Request")
+					continue
+				}
+
+				key := fmt.Sprintf("%s:%d", fwRq.DestAddr, fwRq.DestPort)
+				fw, exists := forwarded[key]
+				if !exists {
+
+					fm, err := ci.handler.OpenTunnel(ci.ctx, identity, fwRq)
+					if err != nil {
+						channel.Reject(ssh.ConnectionFailed, err.Error())
+						continue
+					}
+
+					forwarded[key] = fm
+					fw = fm
+
+				} else {
+					log.Info("re-using open forward", "key", key)
+				}
+
+				if fw == nil {
+					channel.Reject(ssh.ConnectionFailed, "idk")
+					log.Error("fw is nil, dropping", "channelType", channel.ChannelType(), "key", key)
+					continue
+				}
+
+				ch, _, err := channel.Accept()
+				if err != nil {
+					log.Error("error accepting channel", "error", err)
+					continue
+				}
+
+				if !eg.TryGo(func() error {
+					defer ch.Close()
+					// pipe ch (ssh.Channel) => fw (io.ReadWriter)
+					if err := fw.Forward(ch, ch); err != nil {
+						status := struct{ Status uint32 }{1}
+						ch.SendRequest(ResponseTypeExitStatus, false, ssh.Marshal(status))
+						return err
+					}
+					status := struct{ Status uint32 }{0}
+					ch.SendRequest(ResponseTypeExitStatus, false, ssh.Marshal(status))
+					return nil
+				}) {
+					status := struct{ Status uint32 }{1}
+					ch.SendRequest(ResponseTypeExitStatus, false, ssh.Marshal(status))
+					ch.Close()
+					log.Error("goroutines cap exceeded, cannot handle", "channelType", channel.ChannelType())
+					continue
+				}
+
+			default:
+				log.Debug("Rejected unsupported channel", "channelType", channel.ChannelType())
+				channel.Reject(ssh.UnknownChannelType, "Unsupported SSH channel")
 				continue
 			}
-
-			bctx := NewBaseContext(ci.ctx, identity, ch)
-
-			if !eg.TryGo(func() error {
-				defer ch.Close()
-				return handleSessionCh(bctx, chReqs, log, ci.handler)
-			}) {
-				ch.Close()
-				log.Error("goroutines cap exceeded, cannot handle", "channelType", channel.ChannelType())
-				continue
-			}
-		case ChannelTypeDirectTCPIP:
-			var fwRq requests.DirectTCPIP
-			if err := ssh.Unmarshal(channel.ExtraData(), &fwRq); err != nil {
-				channel.Reject(ssh.Prohibited, "Bad Request")
-				continue
-			}
-
-			key := fmt.Sprintf("%s:%d", fwRq.DestAddr, fwRq.DestPort)
-			fw, exists := forwarded[key]
-			if !exists {
-				// open new k8s tunnel
-				forwarded[key] = true
-			} else {
-				log.Debug("dedup ch open", "key", key)
-			}
-			_ = fw
-
-			ch, _, err := channel.Accept()
-			if err != nil {
-				log.Error("error accepting channel", "error", err)
-				continue
-			}
-
-			// bctx := NewBaseContext(ci.ctx, identity, ch)
-
-			if eg.TryGo(func() error {
-				// defer ch.Close()
-				return ch.Close()
-				// return handleDirectTCPIP(bctx, chReqs, fwRq, log)
-			}) {
-				ch.Close()
-				log.Error("goroutines cap exceeded, cannot handle", "channelType", channel.ChannelType())
-				continue
-			}
-
-		default:
-			log.Debug("Rejected unsupported channel", "channelType", channel.ChannelType())
-			channel.Reject(ssh.UnknownChannelType, "Unsupported SSH channel")
-			continue
 		}
+	}
+
+	for k, fw := range forwarded {
+		_ = fw.Close()
+		log.Info("closed fw", "key", k)
 	}
 
 	return eg.Wait()
@@ -255,6 +308,7 @@ func (ci *ConnectorImpl) Handle(conn net.Conn) error {
 type SessionV2 struct {
 	BaseContext
 	shell    chan struct{}
+	sftp     chan struct{}
 	exec     chan string
 	resizeCh chan ResizeEvent
 }
@@ -263,6 +317,7 @@ func NewSession(ctx BaseContext) *SessionV2 {
 	return &SessionV2{
 		BaseContext: ctx,
 		shell:       make(chan struct{}),
+		sftp:        make(chan struct{}),
 		exec:        make(chan string, 1),
 		resizeCh:    make(chan ResizeEvent, 8),
 	}
@@ -299,6 +354,8 @@ func handleSessionCh(ctx BaseContext, reqs <-chan *ssh.Request, logger *slog.Log
 			status := struct{ Status uint32 }{uint32(code)}
 			_, errs := sess.ch.SendRequest(ResponseTypeExitStatus, false, ssh.Marshal(&status))
 			return errors.Join(errs, err)
+		case <-sess.sftp:
+			return handler.HandleSFTP(sess)
 		}
 	})
 
@@ -340,27 +397,21 @@ func handleSessionCh(ctx BaseContext, reqs <-chan *ssh.Request, logger *slog.Log
 				sess.exec <- execReq.Command
 				logger.Info("Got exec", "execReq", execReq)
 				_ = req.Reply(true, nil)
-			default:
-				logger.Debug("ignoring unknown request", "type", req.Type)
-				_ = req.Reply(false, nil)
-			}
-		}
-	}
-}
-
-func handleDirectTCPIP(ctx Context, reqs <-chan *ssh.Request, forwardRequest requests.DirectTCPIP, logger *slog.Logger) (err error) {
-	logger.Info("handleDirectTCPIP", "request", forwardRequest)
-	defer logger.Debug("[TRACE] handleDirectTCPIP exit")
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case req, ok := <-reqs:
-			if !ok {
-				return
-			}
-			switch req.Type {
+			case RequestTypeSubsystem:
+				var subsystemReq requests.SubsystemRequest
+				if err := ssh.Unmarshal(req.Payload, &subsystemReq); err != nil {
+					logger.Error("Failed to unmarshal subsystem req", "error", err)
+					_ = req.Reply(false, nil)
+					continue
+				}
+				switch subsystemReq.Subsystem {
+				case SubsystemTypeSFTP:
+					close(sess.sftp)
+					_ = req.Reply(true, nil)
+				default:
+					logger.Debug("ignoring unsupported subsystem", "subsystem", subsystemReq.Subsystem)
+					_ = req.Reply(false, nil)
+				}
 			default:
 				logger.Debug("ignoring unknown request", "type", req.Type)
 				_ = req.Reply(false, nil)

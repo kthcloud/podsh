@@ -1,10 +1,6 @@
 package k8s
 
 import (
-	"fmt"
-
-	"github.com/kthcloud/podsh/internal/sshd"
-	"github.com/kthcloud/podsh/pkg/ssh/requests"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -23,12 +19,4 @@ func New(client kubernetes.Interface, config *rest.Config, resolver Resolver) *H
 	}
 
 	return hi
-}
-
-func (HandlerImpl) HandleSFTP(ctx sshd.Context) error {
-	return fmt.Errorf("not impl")
-}
-
-func (HandlerImpl) HandleForward(ctx sshd.Context, req requests.DirectTCPIP) error {
-	return fmt.Errorf("not impl")
 }

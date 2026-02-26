@@ -42,7 +42,7 @@ func Show(level Level, title, message string) {
 	fmt.Printf("%s│%s\n", color, reset)
 
 	// body
-	for _, paragraph := range strings.Split(message, "\n") {
+	for paragraph := range strings.SplitSeq(message, "\n") {
 		lines := wrap(paragraph, textWidth)
 
 		for _, l := range lines {

@@ -26,3 +26,8 @@ type DirectTCPIP struct {
 type ExecRequest struct {
 	Command string
 }
+
+// SubsystemRequest represents the payload sent with the subsystem request,
+type SubsystemRequest struct {
+	Subsystem string
+}

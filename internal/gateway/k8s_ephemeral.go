@@ -125,8 +125,8 @@ func ensureHelperContainer(
 		helper,
 	)
 
-	patchBytes, err := json.Marshal(map[string]interface{}{
-		"spec": map[string]interface{}{
+	patchBytes, err := json.Marshal(map[string]any{
+		"spec": map[string]any{
 			"ephemeralContainers": pod.Spec.EphemeralContainers,
 		},
 	})
