@@ -39,3 +39,9 @@ type WindowChangeRequest struct {
 	WidthPixels  uint32
 	HeightPixels uint32
 }
+
+// EnvRequest represents the payload sent with the enc requet
+type EnvRequest struct {
+	Name  string // variable name
+	Value string // variable value
+}

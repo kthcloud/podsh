@@ -387,6 +387,15 @@ func handleSessionCh(ctx BaseContext, reqs <-chan *ssh.Request, logger *slog.Log
 				}
 				sess.resizeCh <- ResizeEvent{Width: int(winchReq.Cols), Height: int(winchReq.Rows)}
 				_ = req.Reply(true, nil)
+			case RequestTypeEnv:
+				var envReq requests.EnvRequest
+				if err := ssh.Unmarshal(req.Payload, &envReq); err != nil {
+					logger.Error("Failed to unmarshal env req", "error", err)
+					_ = req.Reply(false, nil)
+					continue
+				}
+				logger.Info("got env", "envReq", envReq)
+				_ = req.Reply(true, nil)
 			case RequestTypeShell:
 				select {
 				case <-sess.shell:
