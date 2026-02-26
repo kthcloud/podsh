@@ -31,3 +31,11 @@ type ExecRequest struct {
 type SubsystemRequest struct {
 	Subsystem string
 }
+
+// WindowChangeRequest represents the payload sent with the window-change requets
+type WindowChangeRequest struct {
+	Cols         uint32
+	Rows         uint32
+	WidthPixels  uint32
+	HeightPixels uint32
+}

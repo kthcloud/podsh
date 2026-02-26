@@ -378,6 +378,15 @@ func handleSessionCh(ctx BaseContext, reqs <-chan *ssh.Request, logger *slog.Log
 				sess.resizeCh <- ResizeEvent{Width: int(ptyReq.Cols), Height: int(ptyReq.Rows)}
 				logger.Info("Got PTY", "ptyReq", ptyReq)
 				_ = req.Reply(true, nil)
+			case RequestTypeWindowChange:
+				var winchReq requests.WindowChangeRequest
+				if err := ssh.Unmarshal(req.Payload, &winchReq); err != nil {
+					logger.Error("Failed to unmarshal window-change req", "error", err)
+					_ = req.Reply(false, nil)
+					continue
+				}
+				sess.resizeCh <- ResizeEvent{Width: int(winchReq.Cols), Height: int(winchReq.Rows)}
+				_ = req.Reply(true, nil)
 			case RequestTypeShell:
 				select {
 				case <-sess.shell:
