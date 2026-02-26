@@ -70,8 +70,6 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 					return ctx.Err()
 				}
 			}
-
-			// go s.handleConn(ctx, conn)
 		}
 	})
 

@@ -27,7 +27,7 @@ func New(opts ...Option) *Server {
 
 	s := &Server{
 		ctx:            cfg.Ctx,
-		sshServer:      sshd.New(sshd.WithConfig(cfg.SSHDConfig), sshd.WithHandler(cfg.Handler)),
+		sshServer:      sshd.New(sshd.WithConfig(cfg.SSHDConfig)),
 		address:        cfg.Address,
 		metricsAddress: cfg.MetricsAddress,
 		metrics:        cfg.Metrics,
