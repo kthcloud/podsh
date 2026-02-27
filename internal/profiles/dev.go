@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/kthcloud/podsh/internal/k8s"
+	"github.com/kthcloud/podsh/internal/k8s/validate"
 	ratelimiter "github.com/kthcloud/podsh/internal/ratelimit"
 	"github.com/kthcloud/podsh/internal/server"
 	"github.com/kthcloud/podsh/internal/sshd"
@@ -59,6 +60,10 @@ func (DevProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Confi
 			PublicKey: pubKeyBytes,
 		},
 	})
+
+	if err := validate.ValidatePermissions(ctx, v.GetString("namespace"), kc, cfg); err != nil {
+		return nil, err
+	}
 
 	return &server.Config{
 		Ctx: ctx,
