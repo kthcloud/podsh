@@ -247,15 +247,17 @@ loop:
 
 					fm, err := ci.handler.OpenTunnel(ci.ctx, identity, fwRq)
 					if err != nil {
+						log.Error("failed to open k8s tunnel", "key", key)
 						channel.Reject(ssh.ConnectionFailed, err.Error())
 						continue
 					}
 
 					forwarded[key] = fm
 					fw = fm
+					log.Info("opended k8s tunnel", "key", key)
 
 				} else {
-					log.Info("re-using open forward", "key", key)
+					log.Info("re-using open k8s tunnel", "key", key)
 				}
 
 				if fw == nil {
