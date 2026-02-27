@@ -2,55 +2,65 @@ package server
 
 import (
 	"context"
-	"log"
+	"errors"
 	"log/slog"
 
-	"github.com/kthcloud/podsh/internal/gateway"
+	"github.com/kthcloud/podsh/internal/metrics"
 	"github.com/kthcloud/podsh/internal/sshd"
-	"golang.org/x/crypto/ssh"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	"golang.org/x/sync/errgroup"
 )
 
 type Server struct {
-	sshServer *sshd.Server
+	ctx            context.Context
+	sshServer      *sshd.Server
+	address        string
+	metricsAddress string
+	metrics        metrics.Metrics
+	logger         *slog.Logger
 }
 
-func New(devPublicKey string, kc *kubernetes.Clientset, rest *rest.Config, namespace string) *Server {
-	// FIXME: dont use this in prod!
-	signer, err := sshd.NewMockHostSigner()
-	if err != nil {
-		panic(err)
+func New(opts ...Option) *Server {
+	cfg := DefaultConfig()
+	for _, opt := range opts {
+		opt(&cfg)
 	}
-
-	pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(devPublicKey))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pubKeyBytes := pubKey.Marshal()
-
-	// TODO: connect to go-deploy
-	auth := sshd.NewMapAuthenticator(map[string]*sshd.Identity{
-		string(pubKeyBytes): {
-			User:      "user@kth.se",
-			UserID:    "4efea96b-2d6b-41f6-96a2-656f18d6f8d1",
-			PublicKey: pubKeyBytes,
-		},
-	})
 
 	s := &Server{
-		sshServer: sshd.New(sshd.WithHostSigner(signer), sshd.WithPublicKeyAuth(auth)),
+		ctx:            cfg.Ctx,
+		sshServer:      sshd.New(sshd.WithConfig(cfg.SSHDConfig)),
+		address:        cfg.Address,
+		metricsAddress: cfg.MetricsAddress,
+		metrics:        cfg.Metrics,
+		logger:         cfg.Logger,
 	}
-
-	s.sshServer.HandleSession(gateway.NewHandler(slog.Default(), gateway.NewLabelResolver(kc, namespace), gateway.NewK8sExecutor(kc, rest)))
 
 	return s
 }
 
+func (s *Server) Validate() (err error) {
+	// TODO: parse s.address to Validate  it
+	if errs := s.sshServer.Validate(); errs != nil {
+		err = errors.Join(errs, err)
+	}
+	return
+}
+
 func (s *Server) Start(ctx context.Context) error {
-	if err := s.sshServer.ListenAndServe(ctx, "localhost:2222"); err != nil {
+	var errg errgroup.Group
+	if s.metrics != nil {
+		errg.Go(func() error {
+			s.logger.Info("Metrics server started on", "address", "http://"+s.metricsAddress)
+			if err := s.metrics.ListenAndServe(ctx, s.metricsAddress); err != nil {
+				s.logger.Error("Metrics server exited", "error", err)
+				return err
+			}
+			return nil
+		})
+	}
+
+	if err := s.sshServer.ListenAndServe(ctx, s.address); err != nil {
 		return err
 	}
-	return nil
+
+	return errg.Wait()
 }
