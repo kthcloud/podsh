@@ -1,0 +1,67 @@
+replicaCount: 2
+
+image:
+  # TODO: set up
+  repository: ghcr.io/kthcloud/podsh
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: LoadBalancer
+
+  annotations: {}
+
+  ports:
+    - name: ssh
+      port: 22
+      targetPort: 22
+      protocol: TCP
+
+rbac:
+  enabled: true
+  # TODO: use the deploy ns on kthcloud
+  namespace: default
+  serviceAccountName: podsh-server-account
+
+networkpolicy:
+  # This is disabled because I havent figured out what it needs to talk to fully
+  enabled: false
+
+env:
+  # TODO: configure viper env mapper
+  - name: PODSH_PROFILE
+    value: prod
+  - name: PODSH_LOG_LEVEL
+    value: info
+
+config:
+  # TODO: config for prod
+  enabled: false
+  mountPath: /etc/podsh
+  data:
+    config.yaml: |
+
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 250m
+    memory: 128Mi
+
+liveness:
+  path: /healthz
+  port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+readiness:
+  path: /ready
+  port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+imagePullSecrets: []
+

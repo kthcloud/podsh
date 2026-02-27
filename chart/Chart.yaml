@@ -1,0 +1,6 @@
+apiVersion: v2
+name: podsh
+description: SSH to k8s pod gateway
+type: application
+version: 0.0.1
+

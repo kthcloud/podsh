@@ -1,0 +1,16 @@
+{{- if .Values.rbac.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: podsh-server-binding
+  namespace: {{ .Values.rbac.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.rbac.serviceAccountName }}
+    namespace: {{ .Values.rbac.namespace }}
+roleRef:
+  kind: Role
+  name: podsh-server-role
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+
