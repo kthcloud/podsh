@@ -27,10 +27,11 @@ type Server struct {
 
 	hostSigner ssh.Signer
 	auth       PublicKeyAuthenticator
-	handler    SessionHandler
 	limiter    ratelimiter.Limiter
 	hasher     ratelimiter.Hasher
 	tarpit     *tarpit.Tarpit
+
+	connector Connector
 
 	mu sync.RWMutex
 }
@@ -49,10 +50,21 @@ func New(opts ...Option) *Server {
 		auth:       cfg.PublicKeyAuthenticator,
 		limiter:    cfg.Limiter,
 		hasher:     cfg.Hasher,
-		handler:    cfg.Handler,
 	}
 	if s.tarpit == nil {
 		s.tarpit = tarpit.NewTarpit(s.ctx, 10)
+	}
+
+	if s.connector == nil {
+		scfg := &ssh.ServerConfig{
+			PublicKeyCallback: s.publicKeyCallback(s.ctx, s.logger),
+			ServerVersion:     "SSH-2.0-podsh",
+			BannerCallback: func(conn ssh.ConnMetadata) string {
+				return "refactorred connector impl\n"
+			},
+		}
+		scfg.AddHostKey(s.hostSigner)
+		s.connector = NewConnectorImpl(s.ctx, s.logger, scfg, cfg.Handler2)
 	}
 
 	return s
@@ -68,7 +80,7 @@ func (s *Server) Validate() (err error) {
 	if s.hostSigner == nil {
 		err = errors.Join(ErrNoHostSigner, err)
 	}
-	if s.handler == nil {
+	if s.connector == nil {
 		err = errors.Join(ErrNoSessionHandler, err)
 	}
 	if s.auth == nil {

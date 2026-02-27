@@ -2,8 +2,10 @@ package sshd
 
 import (
 	"context"
+	"errors"
 	"net"
 	"sync"
+	"time"
 
 	ratelimiter "github.com/kthcloud/podsh/internal/ratelimit"
 	"golang.org/x/sync/errgroup"
@@ -53,7 +55,21 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 
 			}
 
-			go s.handleConn(ctx, conn)
+			backoff := 1 * time.Millisecond
+			for !eg.TryGo(func() error {
+				if err := s.connector.Handle(conn); err != nil && !errors.Is(err, context.Canceled) {
+					return err
+				}
+				return nil
+			}) {
+				s.logger.Error("Used up all goroutines and failed to handle new connection, sleeping for", "duration", backoff)
+				select {
+				case <-time.After(backoff):
+					backoff = time.Duration(max(backoff.Milliseconds()*2, 500)) * time.Millisecond
+				case <-s.ctx.Done():
+					return ctx.Err()
+				}
+			}
 		}
 	})
 

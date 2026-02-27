@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/kthcloud/podsh/internal/gateway"
+	"github.com/kthcloud/podsh/internal/k8s"
 	ratelimiter "github.com/kthcloud/podsh/internal/ratelimit"
 	"github.com/kthcloud/podsh/internal/server"
 	"github.com/kthcloud/podsh/internal/sshd"
@@ -73,12 +73,9 @@ func (DevProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Confi
 			Hasher:                 ratelimiter.NewHasher([]byte("supersecret")),
 
 			Logger: slog.Default(),
+
+			Handler2: k8s.New(kc, cfg, k8s.NewLabelResolver(kc, v.GetString("namespace"))),
 		},
-		Handler: gateway.NewHandler(slog.Default(),
-			gateway.NewLabelResolver(kc, v.GetString("namespace")),
-			gateway.NewK8sExecutor(kc, cfg),
-			gateway.NewK8sSFTP(kc, cfg),
-		),
 
 		Logger: slog.Default(),
 	}, nil

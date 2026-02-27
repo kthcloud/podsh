@@ -1,4 +1,4 @@
-package gateway
+package k8s
 
 import (
 	"context"
@@ -26,12 +26,15 @@ func NewLabelResolver(kc *kubernetes.Clientset, namespace string) *LabelResolver
 	return lr
 }
 
-func (r *LabelResolver) Resolve(ctx context.Context, hostname string, id sshd.Identity) (*Target, error) {
+func (r *LabelResolver) Resolve(ctx context.Context, identity sshd.Identity) (*Target, error) {
+	if identity.RequestedHostname == "" || identity.UserID == "" {
+		return nil, fmt.Errorf("todo validation err")
+	}
 	pods, err := r.kubeClient.CoreV1().Pods(r.namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf(
 			"owner-id=%s,app.kubernetes.io/deploy-name=%s",
-			id.UserID,
-			hostname,
+			identity.UserID,
+			identity.RequestedHostname,
 		),
 	})
 	if err != nil {
@@ -52,5 +55,5 @@ func (r *LabelResolver) Resolve(ctx context.Context, hostname string, id sshd.Id
 		}, nil
 	}
 
-	return nil, fmt.Errorf("user %s cannot access pod %s", id.User, hostname)
+	return nil, fmt.Errorf("user %s cannot access pod %s", identity.User, identity.RequestedHostname)
 }

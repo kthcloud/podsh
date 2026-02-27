@@ -16,7 +16,6 @@ type Config struct {
 	MetricsAddress string
 
 	SSHDConfig sshd.Config
-	Handler    sshd.SessionHandler
 	Metrics    metrics.Metrics
 
 	Logger *slog.Logger
@@ -47,7 +46,6 @@ func WithConfig(config Config) Option {
 		WithMetricsAddress(config.MetricsAddress)(cfg)
 
 		cfg.SSHDConfig = config.SSHDConfig
-		WithHandler(config.Handler)(cfg)
 		WithMetrics(config.Metrics)(cfg)
 	}
 }
@@ -67,15 +65,6 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 	return func(cfg *Config) {
 		cfg.Logger = logger
-	}
-}
-
-func WithHandler(handler sshd.SessionHandler) Option {
-	if handler == nil {
-		return func(_ *Config) {}
-	}
-	return func(cfg *Config) {
-		cfg.Handler = handler
 	}
 }
 
