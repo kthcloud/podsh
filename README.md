@@ -23,3 +23,19 @@ security log
 tunneling support
 command exec support
 
+## Architecture / integration with go-deploy
+
+The user information is stored in the mongodb database that `go-deploy` uses. But this runs in another cluster. This data needs to be synced.
+
+go deploy should publish changes to nats
+
+BELOW IS OLD DESIGN!
+
+### identity-event-gateway
+
+`identity-event-gateway` is a service that runs on the `local` cluster (where go-deploy runs), subscribes to events on the user collection in the db. On event relays it to `gRPC` clients that have subscribed. `gRPC` clients authorize through mTLS.
+
+### identity-projection-sync
+
+`identity-projection-sync` is a service that runs where podsh is deployed. It acts as a client that subscribes to the `identity-event-gateway` and populates a redis cache with the user data, (pk => user info).
+
