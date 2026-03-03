@@ -90,4 +90,16 @@ func init() {
 
 	rootCmd.Flags().String("metrics-address", defaults.DefaultMetricsAddr, "The address the metrics server should use")
 	viper.BindPFlag("metrics-address", rootCmd.Flags().Lookup("metrics-address"))
+
+	rootCmd.Flags().String("ssh-host-signer-path", defaults.DefaultHostSignerPath, "The path where the hosts signing key is")
+	viper.BindPFlag("ssh-host-signer-path", rootCmd.Flags().Lookup("ssh-host-signer-path"))
+
+	rootCmd.Flags().String("redis-address", defaults.DefaultRedisAddress, "The address to redis")
+	viper.BindPFlag("redis-address", rootCmd.Flags().Lookup("redis-address"))
+
+	rootCmd.Flags().Int("redis-db", defaults.DefaultRedisDB, "The db to use in redis")
+	viper.BindPFlag("redis-db", rootCmd.Flags().Lookup("redis-db"))
+
+	rootCmd.Flags().String("redis-password", defaults.DefaultRedisPassword, "The password to use for redis")
+	viper.BindPFlag("redis-password", rootCmd.Flags().Lookup("redis-password"))
 }

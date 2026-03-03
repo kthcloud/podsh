@@ -10,6 +10,7 @@ tool (
 require (
 	github.com/Phillezi/common/config v0.0.0-20250720144034-e66c0601d876
 	github.com/Phillezi/interrupt v0.0.2
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/phillezi/sftp v1.14.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/spf13/cobra v1.10.2
@@ -53,6 +54,7 @@ require (
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
+	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect

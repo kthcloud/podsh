@@ -41,7 +41,7 @@ config:
   mountPath: /etc/podsh
   data:
     config.yaml: |
-
+      kubeconfig: ""
 
 resources:
   limits:

@@ -16,26 +16,15 @@ ssh <deployment-name>@<public-ssh-host>:<public-ssh-port>
 
 ## TODO
 
-pre-auth rate limiting
-handshake deadlines
-tarpitting (sleep random time after failed auth)
-security log
-tunneling support
-command exec support
+[x] pre-auth rate limiting
+[ ] handshake deadlines
+[x] tarpitting (sleep random time after failed auth)
+[ ] security log
+[x] tunneling support
+[x] command exec support
+[x] scp / sftp support
 
 ## Architecture / integration with go-deploy
 
 The user information is stored in the mongodb database that `go-deploy` uses. But this runs in another cluster. This data needs to be synced.
-
-go deploy should publish changes to nats
-
-BELOW IS OLD DESIGN!
-
-### identity-event-gateway
-
-`identity-event-gateway` is a service that runs on the `local` cluster (where go-deploy runs), subscribes to events on the user collection in the db. On event relays it to `gRPC` clients that have subscribed. `gRPC` clients authorize through mTLS.
-
-### identity-projection-sync
-
-`identity-projection-sync` is a service that runs where podsh is deployed. It acts as a client that subscribes to the `identity-event-gateway` and populates a redis cache with the user data, (pk => user info).
-
+Current solution is to poll this and populate a redis cache, not the best/cleanest solution but I think it will work ok.

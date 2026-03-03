@@ -15,5 +15,15 @@ const (
 )
 
 const (
-	DefaultPodshHelperImage = "phillezi/podsftp:latest"
+	DefaultPodshHelperImage = "ghcr.io/kthcloud/podsh/agent:latest"
+)
+
+const (
+	DefaultHostSignerPath = "/etc/podsh/key"
+)
+
+const (
+	DefaultRedisAddress  = "localhost:6379"
+	DefaultRedisDB       = 0
+	DefaultRedisPassword = ""
 )

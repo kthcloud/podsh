@@ -1,0 +1,28 @@
+syntax = "proto3";
+package identitypd;
+option go_package = "github.com/kthcloud/podsh/api/proto;apiv1";
+
+service UserService {
+  // Resolves an SSH public key to identity information.
+  rpc ResolveIdentity(ResolveIdentityRequest)
+      returns (ResolveIdentityResponse);
+}
+
+message ResolveIdentityRequest {
+  bytes public_key = 1;
+}
+
+message ResolveIdentityResponse {
+  Identity identity = 1;
+}
+
+message Identity {
+  string user_id = 1;
+  string username = 2;
+
+  string role = 3;
+  bool admin = 4;
+
+  repeated string teams = 5;
+}
+
