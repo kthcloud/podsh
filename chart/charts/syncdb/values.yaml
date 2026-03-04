@@ -1,0 +1,62 @@
+
+image:
+  repository: ghcr.io/kthcloud/podsh/syncdb
+  tag: "v1.0.0"
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: false
+
+externalMongo:
+  enabled: true
+  name: external-mongo
+  ip: "" # fill me in
+  port: 27017
+
+env:
+  - name: REDIS_ADDR
+    value: redis:6379
+  - name: REDIS_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: redis-secret
+        key: redis-password
+  - name: MONGO_HOST
+    value: external-mongo:27017
+  - name: MONGO_USER
+    valueFrom:
+      secretKeyRef:
+        name: mongo-secret
+        key: user
+  - name: MONGO_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: mongo-secret
+        key: password
+
+config:
+  enabled: false
+  mountPath: /etc/syncdb
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 256Mi
+  requests:
+    cpu: 250m
+    memory: 128Mi
+
+liveness:
+  path: /healthz
+  port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+readiness:
+  path: /ready
+  port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+imagePullSecrets: []
+

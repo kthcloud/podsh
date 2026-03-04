@@ -1,0 +1,22 @@
+{{- if .Values.externalMongo.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.externalMongo.name | default "external-mongo" }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: {{ .Values.externalMongo.port | default 27017 }}
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: {{ .Values.externalMongo.name | default "external-mongo" }}
+subsets:
+  - addresses:
+      - ip: {{ required  "IP is required if externalMongo should be used!" .Values.externalMongo.ip }}
+    ports:
+      - port: {{ .Values.externalMongo.port | default 27017 }}
+{{- end }}
+

@@ -1,36 +1,35 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-podsh-server
+  name: {{ .Release.Name }}-syncdb
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: podsh-server
+    app.kubernetes.io/name: syncdb
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: podsh-server
+      app.kubernetes.io/name: syncdb
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: podsh-server
+        app.kubernetes.io/name: syncdb
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
-      serviceAccountName: {{ .Values.rbac.serviceAccountName }}
+      automountServiceAccountToken: false
       securityContext:
         seccompProfile:
           type: RuntimeDefault
         readOnlyRootFilesystem: true
         privileged: false
       containers:
-        - name: podsh-server
+        - name: syncdb-worker
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             runAsNonRoot: true
-            # TODO: define in image 
             runAsUser: 10001
             runAsGroup: 10001
             allowPrivilegeEscalation: false
@@ -38,8 +37,6 @@ spec:
             capabilities:
               drop:
                 - ALL
-              add:
-                - NET_BIND_SERVICE
           ports:
             {{- range .Values.service.ports }}
             - containerPort: {{ .targetPort }}
@@ -78,6 +75,6 @@ spec:
         {{- if .Values.config.enabled }}
         - name: config
           configMap:
-            name: {{ .Release.Name }}-config
+            name: {{ .Release.Name }}-syncdb-config
         {{- end }}
 

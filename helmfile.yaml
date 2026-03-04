@@ -1,0 +1,13 @@
+environments:
+  dev:
+
+---
+repositories:
+
+---
+releases:
+  
+  - name: podsh
+    namespace: podsh
+    chart: ./chart
+
