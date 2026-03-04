@@ -105,8 +105,7 @@ func main() {
 	m.RegisterCounter("failed_auth_total", "Failed SSH auth attempts")
 	m.RegisterHistogram("auth_duration_seconds", "Auth duration", nil)
 
-	health := metrics.NewHealth()
-	health.Add(func() error {
+	health := metrics.NewHealth(func() error {
 		if err := redisClient.Ping().Err(); err != nil {
 			return err
 		}
@@ -116,35 +115,15 @@ func main() {
 		return nil
 	})
 
-	server := metrics.NewServer(metrics.ServerOptions{
-		Addr:      ":9090",
-		Metrics:   m,
-		Health:    health,
-		Readiness: health,
-	})
-
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
-	})
-
-	http.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
-		// Optionally, check Redis and Mongo connectivity for readiness
-		if err := redisClient.Ping().Err(); err != nil {
-			http.Error(w, "redis not ready", http.StatusServiceUnavailable)
-			return
-		}
-		if err := mongoClient.Ping(ctx, readpref.Primary()); err != nil {
-			http.Error(w, "mongo not ready", http.StatusServiceUnavailable)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
-	})
+	server := metrics.NewServer(metrics.WithMetrics(m),
+		metrics.WithHealth(health),
+		metrics.WithReadiness(health),
+		metrics.WithLiveness(metrics.NewHealth()),
+	)
 
 	go func() {
 		slog.Info("starting probe server", "port", *probePort)
-		if err := server.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := server.ListenAndServe(ctx, ":"+*probePort); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("probe server exited", "error", err)
 		}
 	}()

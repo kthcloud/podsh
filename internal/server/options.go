@@ -5,8 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/kthcloud/podsh/internal/defaults"
-	"github.com/kthcloud/podsh/internal/metrics"
 	"github.com/kthcloud/podsh/internal/sshd"
+	"github.com/kthcloud/podsh/pkg/metrics"
 )
 
 type Config struct {
@@ -29,7 +29,7 @@ func DefaultConfig() Config {
 		MetricsAddress: defaults.DefaultMetricsAddr,
 
 		SSHDConfig: sshd.DefaultConfig(),
-		Metrics:    metrics.NewPrometheusMetrics(),
+		Metrics:    metrics.NewPrometheus(),
 
 		Logger: slog.New(slog.DiscardHandler),
 	}

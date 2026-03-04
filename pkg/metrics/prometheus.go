@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -20,8 +21,17 @@ type promMetrics struct {
 }
 
 func NewPrometheus() Metrics {
+	reg := prometheus.NewRegistry()
+
+	reg.MustRegister(
+		collectors.NewGoCollector(),
+	)
+	reg.MustRegister(
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+	)
+
 	return &promMetrics{
-		registry:   prometheus.NewRegistry(),
+		registry:   reg,
 		counters:   make(map[string]prometheus.Counter),
 		gauges:     make(map[string]prometheus.Gauge),
 		histograms: make(map[string]prometheus.Histogram),

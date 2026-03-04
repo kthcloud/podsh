@@ -3,6 +3,7 @@ module github.com/kthcloud/podsh
 go 1.26.0
 
 tool (
+	github.com/phillezi/gob/cmd/gob
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc
 	google.golang.org/protobuf/cmd/protoc-gen-go
 )

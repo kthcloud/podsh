@@ -1,31 +1,20 @@
 package metrics
 
-import (
-	"net/http"
-	"sync"
-)
+import "net/http"
 
 type Check func() error
 
 type Health struct {
 	checks []Check
-	mu     sync.RWMutex
 }
 
-func NewHealth() *Health {
-	return &Health{}
-}
-
-func (h *Health) Add(check Check) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.checks = append(h.checks, check)
+func NewHealth(checks ...Check) *Health {
+	return &Health{
+		checks: checks,
+	}
 }
 
 func (h *Health) Handler(w http.ResponseWriter, r *http.Request) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
 	for _, c := range h.checks {
 		if err := c(); err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
@@ -34,5 +23,5 @@ func (h *Health) Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	_, _ = w.Write([]byte("ok"))
 }

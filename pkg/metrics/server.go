@@ -5,49 +5,83 @@ import (
 	"net/http"
 )
 
-type Server struct {
+type Server interface {
+	ListenAndServe(ctx context.Context, addr string) error
+}
+
+type Option func(*ServerImpl)
+
+func WithMetrics(m Metrics) Option {
+	return func(s *ServerImpl) {
+		if m != nil {
+			s.mux.Handle("/metrics", m.Handler())
+		}
+	}
+}
+
+func WithHealth(h *Health) Option {
+	return func(s *ServerImpl) {
+		if h != nil {
+			s.mux.HandleFunc("/healthz", h.Handler)
+		}
+	}
+}
+
+func WithReadiness(h *Health) Option {
+	return func(s *ServerImpl) {
+		if h != nil {
+			s.mux.HandleFunc("/readyz", h.Handler)
+		}
+	}
+}
+
+func WithLiveness(h *Health) Option {
+	return func(s *ServerImpl) {
+		if h != nil {
+			s.mux.HandleFunc("/livez", h.Handler)
+		}
+	}
+}
+
+type ServerImpl struct {
 	httpServer *http.Server
+	mux        *http.ServeMux
 }
 
-type ServerOptions struct {
-	Addr      string
-	Metrics   Metrics
-	Health    *Health
-	Readiness *Health
-	Liveness  *Health
-}
-
-func NewServer(opts ServerOptions) *Server {
+// Constructor
+func NewServer(opts ...Option) Server {
 	mux := http.NewServeMux()
 
-	if opts.Metrics != nil {
-		mux.Handle("/metrics", opts.Metrics.Handler())
-	}
-
-	if opts.Health != nil {
-		mux.HandleFunc("/healthz", opts.Health.Handler)
-	}
-
-	if opts.Readiness != nil {
-		mux.HandleFunc("/readyz", opts.Readiness.Handler)
-	}
-
-	if opts.Liveness != nil {
-		mux.HandleFunc("/livez", opts.Liveness.Handler)
-	}
-
-	return &Server{
+	s := &ServerImpl{
+		mux: mux,
 		httpServer: &http.Server{
-			Addr:    opts.Addr,
 			Handler: mux,
 		},
 	}
+
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s
 }
 
-func (s *Server) Start() error {
-	return s.httpServer.ListenAndServe()
-}
+func (s *ServerImpl) ListenAndServe(ctx context.Context, addr string) error {
+	s.httpServer.Addr = addr
 
-func (s *Server) Shutdown(ctx context.Context) error {
-	return s.httpServer.Shutdown(ctx)
+	errCh := make(chan error, 1)
+
+	go func() {
+		errCh <- s.httpServer.ListenAndServe()
+	}()
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		_ = s.httpServer.Shutdown(shutdownCtx)
+		return ctx.Err()
+	case err := <-errCh:
+		return err
+	}
 }
