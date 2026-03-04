@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-redis/redis"
 	"github.com/kthcloud/podsh/internal/workers/syncdb"
+	"github.com/kthcloud/podsh/pkg/metrics"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -97,6 +98,31 @@ func main() {
 
 	slog.Info("starting syncdb worker")
 
+	var m metrics.Metrics
+
+	m = metrics.NewPrometheus()
+
+	m.RegisterCounter("failed_auth_total", "Failed SSH auth attempts")
+	m.RegisterHistogram("auth_duration_seconds", "Auth duration", nil)
+
+	health := metrics.NewHealth()
+	health.Add(func() error {
+		if err := redisClient.Ping().Err(); err != nil {
+			return err
+		}
+		if err := mongoClient.Ping(ctx, readpref.Primary()); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	server := metrics.NewServer(metrics.ServerOptions{
+		Addr:      ":9090",
+		Metrics:   m,
+		Health:    health,
+		Readiness: health,
+	})
+
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
@@ -118,9 +144,8 @@ func main() {
 
 	go func() {
 		slog.Info("starting probe server", "port", *probePort)
-		if err := http.ListenAndServe(":"+*probePort, nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("probe server stopped", "error", err)
-			os.Exit(1)
+		if err := server.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("probe server exited", "error", err)
 		}
 	}()
 
