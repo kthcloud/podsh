@@ -14,27 +14,31 @@ func (s *Server) publicKeyCallback(parent context.Context, logger *slog.Logger) 
 			return nil, errors.New("no authenticator configured")
 		}
 
+		// TODO: sanitize
+		deployment := meta.User()
+
 		id, err := s.auth.Authenticate(parent, ConnMetadata{
-			User:       meta.User(),
+			Deployment: deployment,
 			RemoteAddr: meta.RemoteAddr().String(),
 		}, key.Marshal())
 		if err != nil {
 			logger.Debug("authentication failed",
-				"user", meta.User(),
+				"deployment", deployment,
+				"remoteAddr", meta.RemoteAddr().String(),
 				"err", err,
 			)
 			return nil, err
 		}
 
+		identity := encodeIdentity(id)
 		perms := &ssh.Permissions{
 			Extensions: map[string]string{
-				"identity": encodeIdentity(id),
-				// TODO: sanitize
-				"requested-host": meta.User(),
+				"identity":       identity,
+				"requested-host": deployment,
 			},
 		}
 
-		logger.Info("authentication success", "user", meta.User())
+		logger.Info("authentication success", "deployment", deployment, "user", id.User, "userID", id.UserID, "remoteAddr", id.RemoteAddr)
 		return perms, nil
 	}
 }

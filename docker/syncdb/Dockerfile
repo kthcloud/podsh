@@ -1,17 +1,15 @@
 FROM alpine:latest AS runner-setup
 
-RUN addgroup -S podsh \
- && adduser  -S podsh \
-             -G podsh \
-             -h /opt/podsh \
+RUN addgroup -S syncdb \
+ && adduser  -S syncdb \
+             -G syncdb \
+             -h /opt/syncdb \
              -s /sbin/nologin \
              -D \
- && mkdir -p /opt/podsh \
- && chown podsh:podsh /opt/podsh
+ && mkdir -p /opt/syncdb \
+ && chown syncdb:syncdb /opt/syncdb
 
 FROM --platform=$BUILDPLATFORM golang:alpine AS build-0
-
-RUN apk add --no-cache libcap
 
 # Set up working directory
 WORKDIR /app
@@ -27,15 +25,14 @@ RUN go mod download -x
 # Copy the rest of the project to ensure code changes doesnt trigger re-download of all deps
 COPY . .
 
-FROM --platform=$BUILDPLATFORM build-0 AS build-podsh
+FROM --platform=$BUILDPLATFORM build-0 AS build-syncdb
 
 ARG TARGETOS
 ARG TARGETARCH
 ARG GIT_TAG
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-  go build -o podsh_${TARGETOS}_${TARGETARCH} -ldflags="-w -s -X main.version=${GIT_TAG}" ./cmd/podsh && \
-  setcap 'cap_net_bind_service=+ep' podsh_${TARGETOS}_${TARGETARCH}
+  go build -o syncdb_${TARGETOS}_${TARGETARCH} -ldflags="-w -s -X main.version=${GIT_TAG}" ./cmd/syncdb
 
 # Runner 
 FROM scratch
@@ -43,23 +40,18 @@ FROM scratch
 COPY --from=runner-setup /etc/passwd /etc/group /etc/passwd
 COPY --from=runner-setup /etc/group /etc/group
 
-ENV HOME=/opt/podsh
-ENV KUBECONFIG=/etc/podsh/kube/config
-ENV PROFILE=prod
+ENV HOME=/opt/syncdb
 
 # Set up the working directory
-WORKDIR /opt/podsh
+WORKDIR /opt/syncdb
 
 ARG TARGETOS
 ARG TARGETARCH
 
 # Copy the binary from the builder stage
-COPY --from=build-podsh --chmod=777 /app/podsh_${TARGETOS}_${TARGETARCH} /usr/bin/podsh
+COPY --from=build-syncdb --chmod=777 /app/syncdb_${TARGETOS}_${TARGETARCH} /usr/bin/syncdb
 
-VOLUME /etc/podsh
+VOLUME /etc/syncdb
 
-EXPOSE 22
-EXPOSE 8080
-
-ENTRYPOINT ["/usr/bin/podsh"]
+ENTRYPOINT ["/usr/bin/syncdb"]
 

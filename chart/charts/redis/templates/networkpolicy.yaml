@@ -1,0 +1,23 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "redis.fullname" . }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "redis.name" . }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        {{- range .Values.networkPolicy.allowedPods }}
+        - podSelector:
+            matchLabels:
+              {{- toYaml . | nindent 14 }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 6379
+{{- end }}
+

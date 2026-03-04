@@ -13,8 +13,8 @@ import (
 var ErrProfileNotFound = errors.New("profile not found")
 
 var profiles = map[ProfileKey]Profile{
-	ProfileKeyDev: DevProfileImpl{},
-	// ProfileKeyProd: nil,
+	ProfileKeyDev:  DevProfileImpl{},
+	ProfileKeyProd: ProdProfileImpl{},
 }
 
 type Profile interface {

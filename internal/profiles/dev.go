@@ -23,9 +23,6 @@ func (DevProfileImpl) Mode() Mode {
 }
 
 func (DevProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Config, error) {
-	// FIXME: ensure RBAC is used when actually deployed so we use a restricted client config that only has access to:
-	// - List pods in the deploy namespace
-	// - Exec pods in the deploy namespace
 	cfg, err := clientcmd.BuildConfigFromFlags("", v.GetString("kubeconfig"))
 	if err != nil {
 		return nil, err

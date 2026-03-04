@@ -7,6 +7,6 @@ type PublicKeyAuthenticator interface {
 }
 
 type ConnMetadata struct {
-	User       string
+	Deployment string
 	RemoteAddr string
 }

@@ -2,8 +2,8 @@ replicaCount: 2
 
 image:
   # TODO: set up
-  repository: ghcr.io/kthcloud/podsh
-  tag: "1.0.0"
+  repository: ghcr.io/kthcloud/podsh/podsh
+  tag: "v1.0.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -34,6 +34,11 @@ env:
     value: prod
   - name: PODSH_LOG_LEVEL
     value: info
+  - name: PODSH_REDIS_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: redis-secret
+        key: redis-password
 
 config:
   # TODO: config for prod
@@ -41,11 +46,11 @@ config:
   mountPath: /etc/podsh
   data:
     config.yaml: |
-
+      kubeconfig: ""
 
 resources:
   limits:
-    cpu: 500m
+    cpu: 2000m
     memory: 256Mi
   requests:
     cpu: 250m
@@ -64,4 +69,14 @@ readiness:
   periodSeconds: 5
 
 imagePullSecrets: []
+
+redis:
+  enabled: true
+  auth:
+    password: "changeme"
+
+syncdb:
+  enabled: true
+  externalMongo:
+    ip: 1.1.1.1
 

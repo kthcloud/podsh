@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "redis.fullname" . }}
+spec:
+  serviceName: {{ include "redis.fullname" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "redis.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "redis.name" . }}
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        privileged: false
+        fsGroup: 1001
+      containers:
+        - name: redis
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--requirepass"
+            - "$(REDIS_PASSWORD)"
+            - "--appendonly"
+            - "yes"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "redis.fullname" . }}
+                  key: redis-password
+          ports:
+            - containerPort: 6379
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.persistence.storageClass | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}
+

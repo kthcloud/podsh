@@ -3,4 +3,16 @@ name: podsh
 description: SSH to k8s pod gateway
 type: application
 version: 0.0.1
+appVersion: "1.0.0"
+dependencies:
+
+  - name: redis
+    version: "0.0.1"
+    repository: "file://charts/redis"
+    condition: redis.enabled
+
+  - name: syncdb
+    version: "0.0.1"
+    repository: "file://charts/syncdb"
+    condition: syncdb.enabled
 

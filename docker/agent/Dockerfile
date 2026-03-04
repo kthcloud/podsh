@@ -18,18 +18,20 @@ FROM --platform=$BUILDPLATFORM build-0 AS build-sleep
 
 ARG TARGETOS
 ARG TARGETARCH
+ARG GIT_TAG
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-  go build -o sleep_${TARGETOS}_${TARGETARCH} ./cmd/sleep
+  go build -o sleep_${TARGETOS}_${TARGETARCH} -ldflags="-w -s -X main.version=${GIT_TAG}" ./cmd/sleep
 
 
 FROM --platform=$BUILDPLATFORM build-0 AS build-sftp
 
 ARG TARGETOS
 ARG TARGETARCH
+ARG GIT_TAG
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-  go build -o podsftp_${TARGETOS}_${TARGETARCH} ./cmd/podsftp
+  go build -o podsftp_${TARGETOS}_${TARGETARCH} -ldflags="-w -s -X main.version=${GIT_TAG}" ./cmd/podsftp
 
 
 # Runner 
@@ -45,6 +47,5 @@ ARG TARGETARCH
 COPY --from=build-sleep --chmod=777 /app/sleep_${TARGETOS}_${TARGETARCH} /usr/bin/sleep
 COPY --from=build-sftp --chmod=777 /app/podsftp_${TARGETOS}_${TARGETARCH} /usr/bin/podsftp
 
-# Run the Go Gin binary
 ENTRYPOINT ["/usr/bin/podsftp"]
 
