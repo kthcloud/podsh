@@ -61,6 +61,10 @@ spec:
                   key: password
             - name: PODSH_REDIS_ADDRESS
               value: podsh-redis:6379
+            - name: PODSH_AGENT_IMAGE
+              value: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}"
+            - name: PODSH_AGENT_IMAGEPULLPOLICY
+              value: {{ .Values.agent.image.pullPolicy }}
           volumeMounts:
             {{- if .Values.config.enabled }}
             - name: config
@@ -95,6 +99,15 @@ spec:
           configMap:
             name: {{ .Release.Name }}-config
         {{- end }}
+        {{- if .Values.ssh.hostKeySecretName }}
+        - name: ssh-hostkey
+          secret:
+            secretName: {{ .Values.ssh.hostKeySecretName }}
+            defaultMode: 0600
+            items:
+              - key: key
+                path: key
+      {{- else if .Values.ssh.hostSignerKey }}
         - name: ssh-hostkey
           secret:
             secretName: {{ .Release.Name }}-ssh
@@ -102,4 +115,5 @@ spec:
             items:
               - key: key
                 path: key
+      {{- end }}
 
