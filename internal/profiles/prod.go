@@ -26,7 +26,7 @@ func (ProdProfileImpl) Mode() Mode {
 
 func (ProdProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Config, error) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: MustParseLevel(v.GetString("log.level")),
 	}))
 	slog.SetDefault(logger)
 
@@ -59,16 +59,16 @@ func (ProdProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Conf
 		return nil, err
 	}
 
-	hostSigner, err := sshd.LoadHostSigner(v.GetString("ssh-host-signer-path"))
+	hostSigner, err := sshd.LoadHostSigner(v.GetString("ssh.hostsignerpath"))
 	if err != nil {
 		slog.Default().Error("could not load host signer key", "error", err)
 		return nil, err
 	}
 
 	client := redis.NewClient(&redis.Options{
-		Addr:     v.GetString("redis-address"),
-		Password: v.GetString("redis-password"),
-		DB:       v.GetInt("redis-db"),
+		Addr:     v.GetString("redis.address"),
+		Password: v.GetString("redis.password"),
+		DB:       v.GetInt("redis.db"),
 	}).WithContext(ctx)
 
 	if err := client.Ping().Err(); err != nil {
@@ -86,13 +86,13 @@ func (ProdProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Conf
 		Ctx: ctx,
 
 		Address:        v.GetString("address"),
-		MetricsAddress: v.GetString("metrics-address"),
+		MetricsAddress: v.GetString("metrics.address"),
 
 		SSHDConfig: sshd.Config{
 			Ctx:                    ctx,
 			Signer:                 hostSigner,
 			PublicKeyAuthenticator: auth,
-			Limiter:                ratelimiter.New(v.GetFloat64("limit-rate"), v.GetInt("limit-burst"), v.GetDuration("limit-ttl")),
+			Limiter:                ratelimiter.NewRedis(client, v.GetFloat64("limit.rate"), v.GetInt("limit.burst"), v.GetDuration("limit.ttl")),
 			Hasher:                 ratelimiter.NewHasher([]byte("supersecret")),
 
 			Logger: slog.Default(),

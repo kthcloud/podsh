@@ -10,7 +10,7 @@ run = "helmfile -e dev lint"
 
 [tasks.build-images]
 description = "Build all images using buildx bake"
-run = "docker buildx bake all"
+run = "docker buildx bake"
 
 [tasks.load-images]
 env = { KUBECONFIG = ".secrets/podsh-dev-kubeconfig" }
@@ -39,4 +39,4 @@ run = "helmfile -e dev sync"
 
 [tasks.dev-example]
 description = "Use the example public key to access the example deployment using ssh"
-run = "ssh -p 2222 example@localhost -i ./dev/.ssh/id_ed25519"
+run = "ssh -p 2222 example@example.localtest.me -i ./dev/.ssh/id_ed25519"

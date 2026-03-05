@@ -4,6 +4,8 @@ This application acts as a gateway for ssh => kubectl exec -it, with user authen
 
 ## Client side usage
 
+## Normal SSH
+
 ```bash
 ssh <deployment-name>@<public-ssh-host>:<public-ssh-port>
 # This server validates SSH access against stored ssh public key,
@@ -13,6 +15,11 @@ ssh <deployment-name>@<public-ssh-host>:<public-ssh-port>
 # Then a interactive shell is established using the kubernetes api mapped to the established SSH connection.
 # voila a "ssh" shell for the pod, and the pod doesnt even have to have sshd installed, configured and running ;)
 ```
+
+## Using vscode remote SSH
+
+Due to a bug in the `vscode-remote-development` extension pack, remote SSH in vscode only works if `devcontainers` are disabled, since it tries to bootstrap the devcontainers extension and fails to do this, due to getting stuck probing the container.
+
 ## Local dev
 
 ### Prerequisites

@@ -30,16 +30,10 @@ networkpolicy:
   enabled: false
 
 env:
-  # TODO: configure viper env mapper
   - name: PODSH_PROFILE
     value: prod
   - name: PODSH_LOG_LEVEL
     value: info
-  - name: PODSH_REDIS_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: redis-secret
-        key: redis-password
 
 config:
   # TODO: config for prod
@@ -48,6 +42,10 @@ config:
   data:
     config.yaml: |
       kubeconfig: ""
+      address: :22
+      metrics:
+        address: :8080
+
 
 resources:
   limits:

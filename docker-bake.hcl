@@ -1,72 +1,58 @@
 # docker-bake.hcl
-
 group "default" {
-  targets = ["all"]
-}
-
-variable "VERSION" {
-  default = "latest"
+  targets = ["podsh", "agent", "syncdb"]
 }
 
 variable "GIT_TAG" {
-  default = "unknown"
+  default = "latest"
 }
 
 variable "REGISTRY" {
-  default = "ghcr.io/"
+  default = "ghcr.io"
 }
 
 variable "REPO" {
-  default = "kthcloud/podsh/"
+  default = "kthcloud/podsh"
 }
 
-variable "BUILD_VERSIONS" {
-  default = "latest,master"
-}
+target "common" {
+  cache-from = ["type=gha"]
+  cache-to   = ["type=gha,mode=max"]
 
-target "all" {
-  name = "${tgt}-${sanitize(vers)}"
-  matrix = {
-    tgt = ["podsh", "agent", "syncdb"]
-    vers = compact(split(",", "${BUILD_VERSIONS}"))
-  }
-  inherits = ["${tgt}"]
   args = {
-    GIT_TAG = vers
+    GIT_TAG = "${GIT_TAG}"
   }
-  tags = ["${REGISTRY}${REPO}${tgt}:${vers}"]
+
+  # platforms = ["linux/amd64", "linux/arm64"]
 }
 
 target "podsh" {
+  inherits = ["common"]
   dockerfile = "docker/podsh/Dockerfile"
-  tags = ["${REGISTRY}${REPO}podsh:${VERSION}"] 
-  args = {
-    GIT_TAG = "${GIT_TAG}"
-  }
-  cacheFrom = "type=gha"
-  cacheTo = "type=gha,mode=max"
-  #platforms = ["linux/amd64", "linux/arm64"]
+
+  tags = concat(
+    ["${REGISTRY}/${REPO}/podsh:${GIT_TAG}"],
+    GIT_TAG == "latest" ? [] : ["${REGISTRY}/${REPO}/podsh:latest"]
+  )
 }
 
 target "agent" {
+  inherits = ["common"]
   dockerfile = "docker/agent/Dockerfile"
-  tags = ["${REGISTRY}${REPO}agent:${VERSION}"]
-  args = {
-    GIT_TAG = "${GIT_TAG}"
-  }
-  cacheFrom = "type=gha"
-  cacheTo = "type=gha,mode=max"
-  #platforms = ["linux/amd64", "linux/arm64"]
+
+  tags = concat(
+    ["${REGISTRY}/${REPO}/agent:${GIT_TAG}"],
+    GIT_TAG == "latest" ? [] : ["${REGISTRY}/${REPO}/agent:latest"]
+  )
 }
 
 target "syncdb" {
+  inherits = ["common"]
   dockerfile = "docker/syncdb/Dockerfile"
-  tags = ["${REGISTRY}${REPO}syncdb:${VERSION}"]
-  args = {
-    GIT_TAG = "${GIT_TAG}"
-  }
-  cacheFrom = "type=gha"
-  cacheTo = "type=gha,mode=max"
-  #platforms = ["linux/amd64", "linux/arm64"]
+  
+  tags = concat(
+    ["${REGISTRY}/${REPO}/syncdb:${GIT_TAG}"],
+    GIT_TAG == "latest" ? [] : ["${REGISTRY}/${REPO}/syncdb:latest"]
+  )
 }
 

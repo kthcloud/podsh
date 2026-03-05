@@ -25,6 +25,7 @@ func ValidatePermissions(ctx context.Context, namespace string, kc kubernetes.In
 		{Verb: "create", Resource: "pods", Subresource: "exec", Namespace: namespace},
 		{Verb: "create", Resource: "pods", Subresource: "portforward", Namespace: namespace},
 		{Verb: "update", Resource: "pods", Subresource: "ephemeralcontainers", Namespace: namespace},
+		{Verb: "patch", Resource: "pods", Subresource: "ephemeralcontainers", Namespace: namespace},
 	}
 
 	for _, perm := range required {

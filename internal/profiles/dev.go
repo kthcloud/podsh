@@ -23,6 +23,11 @@ func (DevProfileImpl) Mode() Mode {
 }
 
 func (DevProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Config, error) {
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: MustParseLevel(v.GetString("log.level")),
+	}))
+	slog.SetDefault(logger)
+
 	cfg, err := clientcmd.BuildConfigFromFlags("", v.GetString("kubeconfig"))
 	if err != nil {
 		return nil, err
@@ -38,7 +43,7 @@ func (DevProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Confi
 		return nil, err
 	}
 
-	devPublicKey, err := os.ReadFile(v.GetString("dev-public-key-file"))
+	devPublicKey, err := os.ReadFile(v.GetString("dev.publickeyfile"))
 	if err != nil {
 		return nil, err
 	}
@@ -66,13 +71,13 @@ func (DevProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Confi
 		Ctx: ctx,
 
 		Address:        v.GetString("address"),
-		MetricsAddress: v.GetString("metrics-address"),
+		MetricsAddress: v.GetString("metrics.address"),
 
 		SSHDConfig: sshd.Config{
 			Ctx:                    ctx,
 			Signer:                 mockSigner,
 			PublicKeyAuthenticator: auth,
-			Limiter:                ratelimiter.New(v.GetFloat64("limit-rate"), v.GetInt("limit-burst"), v.GetDuration("limit-ttl")),
+			Limiter:                ratelimiter.New(v.GetFloat64("limit.rate"), v.GetInt("limit.burst"), v.GetDuration("limit.ttl")),
 			Hasher:                 ratelimiter.NewHasher([]byte("supersecret")),
 
 			Logger: slog.Default(),

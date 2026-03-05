@@ -41,10 +41,12 @@ func ensureAgentContainer(
 		EphemeralContainerCommon: corev1.EphemeralContainerCommon{
 			Name: "podsh-agent",
 			// We run a pkg/sftp binary and pipe our sftp requests to it
-			Image:   defaults.DefaultPodshHelperImage,
-			Command: []string{"/usr/bin/sleep", "infinity"},
-			Stdin:   true,
-			TTY:     false,
+			Image: defaults.DefaultPodshHelperImage,
+			// For dev:
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Command:         []string{"/usr/bin/sleep", "infinity"},
+			Stdin:           true,
+			TTY:             false,
 		},
 		TargetContainerName: targetContainer,
 	}

@@ -60,7 +60,12 @@ func New(opts ...Option) *Server {
 			PublicKeyCallback: s.publicKeyCallback(s.ctx, s.logger),
 			ServerVersion:     "SSH-2.0-podsh",
 			BannerCallback: func(conn ssh.ConnMetadata) string {
-				return "refactorred connector impl\n"
+				return `   __   __  __       __             __
+  / /__/ /_/ /  ____/ /__  __ _____/ /
+ /  '_/ __/ _ \/ __/ / _ \/ // / _  / 
+/_/\_\\__/_//_/\__/_/\___/\_,_/\_,_/  
+                                      
+`
 			},
 		}
 		scfg.AddHostKey(s.hostSigner)
