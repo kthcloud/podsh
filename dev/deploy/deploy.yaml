@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: deploy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-deployment
+  namespace: deploy
+  labels:
+    owner-id: "123e4567-e89b-12d3-a456-426614174000"
+    app.kubernetes.io/deploy-name: example
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      owner-id: "123e4567-e89b-12d3-a456-426614174000"
+      app.kubernetes.io/deploy-name: example
+  template:
+    metadata:
+      labels:
+        owner-id: "123e4567-e89b-12d3-a456-426614174000"
+        app.kubernetes.io/deploy-name: example
+    spec:
+      containers:
+        - name: alpine-sleep
+          image: alpine:latest
+          command: ["sh", "-c", "sleep infinity"]
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 50m
+              memory: 32Mi
+

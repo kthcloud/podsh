@@ -3,7 +3,8 @@ replicaCount: 2
 image:
   # TODO: set up
   repository: ghcr.io/kthcloud/podsh/podsh
-  tag: "v1.0.0"
+  #tag: "v1.0.0"
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 service:
@@ -21,7 +22,7 @@ service:
 rbac:
   enabled: true
   # TODO: use the deploy ns on kthcloud
-  namespace: default
+  namespace: deploy
   serviceAccountName: podsh-server-account
 
 networkpolicy:
@@ -42,7 +43,7 @@ env:
 
 config:
   # TODO: config for prod
-  enabled: false
+  enabled: true
   mountPath: /etc/podsh
   data:
     config.yaml: |
@@ -57,13 +58,13 @@ resources:
     memory: 128Mi
 
 liveness:
-  path: /healthz
+  path: /livez
   port: 8080
   initialDelaySeconds: 10
   periodSeconds: 10
 
 readiness:
-  path: /ready
+  path: /readyz
   port: 8080
   initialDelaySeconds: 5
   periodSeconds: 5
@@ -79,4 +80,13 @@ syncdb:
   enabled: true
   externalMongo:
     ip: 1.1.1.1
+
+mongo:
+  enabled: false
+
+ssh:
+  #hostSignerKey: |
+  #  -----BEGIN OPENSSH PRIVATE KEY-----
+  #  ...
+  #  -----END OPENSSH PRIVATE KEY-----
 

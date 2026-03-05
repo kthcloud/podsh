@@ -1,0 +1,12 @@
+{{- if .Values.preload.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mongo.fullname" . }}-preload
+data:
+  {{- range $filename, $content := .Values.preload.files }}
+  {{ $filename }}: |-
+{{ $content | nindent 4 }}
+  {{- end }}
+{{- end }}
+

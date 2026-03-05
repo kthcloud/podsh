@@ -78,7 +78,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(*mongoURI))
+	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(finalMongoURI))
 	if err != nil {
 		slog.Error("failed to connect to mongo", "error", err)
 		os.Exit(1)

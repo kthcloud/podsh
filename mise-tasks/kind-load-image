@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#MISE description="Load multiple local Docker images into Kind cluster"
+set -euo pipefail
+
+CLUSTER_NAME="${1:-podsh-dev}"
+shift || true
+IMAGES=("$@")
+
+if [ ${#IMAGES[@]} -eq 0 ]; then
+  echo "Usage: $0 <cluster-name> <image1[:tag]> [image2[:tag] ...]"
+  exit 1
+fi
+
+# Check if cluster exists
+if ! kind get clusters | grep -q "^${CLUSTER_NAME}$"; then
+  echo "Kind cluster '${CLUSTER_NAME}' does not exist. Please create it first."
+  exit 1
+fi
+
+# Function to check if an image is already loaded in any kind node
+image_loaded() {
+  local image="$1"
+  for node in $(kind get nodes --name "$CLUSTER_NAME"); do
+    if docker exec "$node" crictl images | grep -q "^$image"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Loop over all images
+for IMAGE_NAME in "${IMAGES[@]}"; do
+  # Check if the image exists locally
+  if ! docker image inspect "$IMAGE_NAME" > /dev/null 2>&1; then
+    echo "Warning: Docker image '$IMAGE_NAME' not found locally. Skipping."
+    continue
+  fi
+
+  # Idempotent load
+  if image_loaded "$IMAGE_NAME"; then
+    echo "Image '$IMAGE_NAME' already loaded in cluster '$CLUSTER_NAME'. Skipping."
+  else
+    echo "Loading image '$IMAGE_NAME' into cluster '$CLUSTER_NAME'..."
+    kind load docker-image "$IMAGE_NAME" --name "$CLUSTER_NAME"
+    echo "Image '$IMAGE_NAME' successfully loaded!"
+  fi
+done
+

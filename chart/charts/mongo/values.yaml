@@ -1,0 +1,42 @@
+replicaCount: 1
+
+image:
+  repository: mongo
+  tag: "8.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 27017
+
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClass: ""
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+
+secret:
+  enabled: true
+  name: mongo-secret
+  user: root
+  password: rootpassword
+
+preload:
+  enabled: false
+  files:
+    init-db.js: |
+      db = db.getSiblingDB("deploy");
+      db.createCollection("users");
+      db.users.insertMany([
+        { name: "Alice", age: 30 },
+        { name: "Bob", age: 25 }
+      ])
+

@@ -21,6 +21,7 @@ spec:
       port: {{ .port }}
       targetPort: {{ .targetPort }}
       protocol: {{ .protocol | default "TCP" }}
+      nodePort: 30022
     {{- end }}
 {{- end }}
 

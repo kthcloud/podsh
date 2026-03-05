@@ -85,7 +85,8 @@ func (ProdProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Conf
 	return &server.Config{
 		Ctx: ctx,
 
-		Address: v.GetString("address"),
+		Address:        v.GetString("address"),
+		MetricsAddress: v.GetString("metrics-address"),
 
 		SSHDConfig: sshd.Config{
 			Ctx:                    ctx,

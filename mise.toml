@@ -1,0 +1,42 @@
+[tools]
+kind = "0.31"
+helm = "4.1"
+helmfile = "1.2"
+kubectl = "1.34"
+
+[tasks.lint-dev]
+description = "Lint helmfile for dev environment"
+run = "helmfile -e dev lint"
+
+[tasks.build-images]
+description = "Build all images using buildx bake"
+run = "docker buildx bake all"
+
+[tasks.load-images]
+env = { KUBECONFIG = ".secrets/podsh-dev-kubeconfig" }
+description = "Load images onto the kind cluster"
+depends = [
+  { task = "create-kind-cluster" },
+  { task = "build-images" },
+  { task = "kind-load-image", args = [
+    "podsh-dev",
+    "ghcr.io/kthcloud/podsh/podsh:latest",
+    "ghcr.io/kthcloud/podsh/syncdb:latest",
+    "ghcr.io/kthcloud/podsh/agent:latest",
+  ] },
+]
+
+[tasks.mock-deploy-ns]
+env = { KUBECONFIG = ".secrets/podsh-dev-kubeconfig" }
+depends = ["create-kind-cluster"]
+run = "kubectl apply -f ./dev/deploy/deploy.yaml || true"
+
+[tasks.deploy-dev]
+env = { KUBECONFIG = ".secrets/podsh-dev-kubeconfig" }
+depends = ["load-images", "mock-deploy-ns"]
+description = "Deploy helmfile to dev environment"
+run = "helmfile -e dev sync"
+
+[tasks.dev-example]
+description = "Use the example public key to access the example deployment using ssh"
+run = "ssh -p 2222 example@localhost -i ./dev/.ssh/id_ed25519"

@@ -1,5 +1,7 @@
 environments:
   dev:
+    values:
+      - environments/dev/values.yaml
 
 ---
 repositories:
@@ -10,4 +12,6 @@ releases:
   - name: podsh
     namespace: podsh
     chart: ./chart
+    values:
+      - environments/{{ .Environment.Name }}/values.yaml
 

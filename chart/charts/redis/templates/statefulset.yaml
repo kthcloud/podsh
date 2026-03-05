@@ -16,7 +16,6 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
-        privileged: false
         fsGroup: 1001
       containers:
         - name: redis
@@ -38,8 +37,8 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "redis.fullname" . }}
-                  key: redis-password
+                  name: {{ .Values.auth.secretName }}
+                  key: password
           ports:
             - containerPort: 6379
           resources:
@@ -56,7 +55,9 @@ spec:
         name: data
       spec:
         accessModes: ["ReadWriteOnce"]
+        {{- if .Values.persistence.storageClass }}
         storageClassName: {{ .Values.persistence.storageClass | quote }}
+        {{- end }}
         resources:
           requests:
             storage: {{ .Values.persistence.size }}

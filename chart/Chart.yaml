@@ -16,3 +16,8 @@ dependencies:
     repository: "file://charts/syncdb"
     condition: syncdb.enabled
 
+  - name: mongo
+    version: "0.0.1"
+    repository: "file://charts/mongo"
+    condition: mongo.enabled
+

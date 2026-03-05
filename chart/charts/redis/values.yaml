@@ -5,6 +5,7 @@ image:
 
 auth:
   enabled: true
+  secretName: redis-secret
   password: ""
 
 persistence:
