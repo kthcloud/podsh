@@ -41,7 +41,6 @@ spec:
             {{- if .Values.preload.enabled }}
             - name: preload-scripts
               mountPath: /docker-entrypoint-initdb.d
-              readonly: true
             {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
