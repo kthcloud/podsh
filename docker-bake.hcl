@@ -4,7 +4,7 @@ group "default" {
 }
 
 variable "GIT_TAG" {
-  default = "dev"
+  default = "latest"
 }
 
 variable "REGISTRY" {
@@ -30,29 +30,29 @@ target "podsh" {
   inherits = ["common"]
   dockerfile = "docker/podsh/Dockerfile"
 
-  tags = [
-    "${REGISTRY}/${REPO}/podsh:${GIT_TAG}",
-    "${REGISTRY}/${REPO}/podsh:latest",
-  ]
+  tags = concat(
+    ["${REGISTRY}/${REPO}/podsh:${GIT_TAG}"],
+    GIT_TAG == "latest" ? [] : ["${REGISTRY}/${REPO}/podsh:latest"]
+  )
 }
 
 target "agent" {
   inherits = ["common"]
   dockerfile = "docker/agent/Dockerfile"
 
-  tags = [
-    "${REGISTRY}/${REPO}/agent:${GIT_TAG}",
-    "${REGISTRY}/${REPO}/agent:latest",
-  ]
+  tags = concat(
+    ["${REGISTRY}/${REPO}/agent:${GIT_TAG}"],
+    GIT_TAG == "latest" ? [] : ["${REGISTRY}/${REPO}/agent:latest"]
+  )
 }
 
 target "syncdb" {
   inherits = ["common"]
   dockerfile = "docker/syncdb/Dockerfile"
-
-  tags = [
-    "${REGISTRY}/${REPO}/syncdb:${GIT_TAG}",
-    "${REGISTRY}/${REPO}/syncdb:latest",
-  ]
+  
+  tags = concat(
+    ["${REGISTRY}/${REPO}/syncdb:${GIT_TAG}"],
+    GIT_TAG == "latest" ? [] : ["${REGISTRY}/${REPO}/syncdb:latest"]
+  )
 }
 
