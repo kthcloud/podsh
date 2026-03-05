@@ -1,7 +1,8 @@
 
 image:
   repository: ghcr.io/kthcloud/podsh/syncdb
-  tag: "v1.0.0"
+  #tag: "v1.0.0"
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 service:
@@ -13,26 +14,17 @@ externalMongo:
   ip: "" # fill me in
   port: 27017
 
-env:
-  - name: REDIS_ADDR
-    value: redis:6379
-  - name: REDIS_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: redis-secret
-        key: redis-password
-  - name: MONGO_HOST
-    value: external-mongo:27017
-  - name: MONGO_USER
-    valueFrom:
-      secretKeyRef:
-        name: mongo-secret
-        key: user
-  - name: MONGO_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: mongo-secret
-        key: password
+mongo:
+  name: podsh-mongo
+  port: 27017
+  secretName: mongo-secret
+
+redis:
+  name: podsh-redis
+  port: 6379
+  secretName: redis-secret
+
+env: []
 
 config:
   enabled: false
@@ -53,7 +45,7 @@ liveness:
   periodSeconds: 10
 
 readiness:
-  path: /ready
+  path: /readyz
   port: 8080
   initialDelaySeconds: 5
   periodSeconds: 5

@@ -6,7 +6,7 @@ RUN addgroup -S podsh \
              -h /opt/podsh \
              -s /sbin/nologin \
              -D \
- && mkdir -p /opt/podsh \
+ && mkdir -p /opt/podsh /etc/podsh \
  && chown podsh:podsh /opt/podsh
 
 FROM --platform=$BUILDPLATFORM golang:alpine AS build-0
@@ -40,7 +40,8 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 # Runner 
 FROM scratch
 
-COPY --from=runner-setup /etc/passwd /etc/group /etc/passwd
+COPY --from=runner-setup /etc/podsh /etc/podsh
+COPY --from=runner-setup /etc/passwd /etc/passwd
 COPY --from=runner-setup /etc/group /etc/group
 
 ENV HOME=/opt/podsh

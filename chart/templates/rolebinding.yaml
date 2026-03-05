@@ -7,10 +7,10 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: {{ .Values.rbac.serviceAccountName }}
-    namespace: {{ .Values.rbac.namespace }}
+    namespace: {{ .Release.Namespace }}
 roleRef:
-  kind: Role
-  name: podsh-server-role
+  kind: ClusterRole
+  name: podsh-server-clusterrole
   apiGroup: rbac.authorization.k8s.io
 {{- end }}
 

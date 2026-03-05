@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Release.Name }}-podsh-server
-  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: podsh-server
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -22,15 +21,22 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
-        readOnlyRootFilesystem: true
-        privileged: false
+        runAsUser: 10001
+        fsGroup: 10001
       containers:
         - name: podsh-server
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - '--kubeconfig='
+            - '--ssh-host-signer-path=/key'
+            - '--address=:22'
+            - '--metrics-address=:8080'
+            # TODO: fix the envs
+            - '--redis-address=podsh-redis:6379'
+            - '--redis-password=changeme'
           securityContext:
             runAsNonRoot: true
-            # TODO: define in image 
             runAsUser: 10001
             runAsGroup: 10001
             allowPrivilegeEscalation: false
@@ -50,12 +56,23 @@ spec:
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "Secret name for redis is required" .Values.redis.auth.secretName }}
+                  key: password
+            - name: REDIS_ADDRESS
+              value: podsh-redis:6379
           volumeMounts:
             {{- if .Values.config.enabled }}
             - name: config
               mountPath: {{ .Values.config.mountPath }}
               readOnly: true
             {{- end }}
+            - name: ssh-hostkey
+              mountPath: /key
+              subPath: key
+              readOnly: true
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           livenessProbe:
@@ -80,4 +97,11 @@ spec:
           configMap:
             name: {{ .Release.Name }}-config
         {{- end }}
+        - name: ssh-hostkey
+          secret:
+            secretName: {{ .Release.Name }}-ssh
+            defaultMode: 0600
+            items:
+              - key: key
+                path: key
 

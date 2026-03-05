@@ -1,0 +1,39 @@
+mongo:
+  enabled: true
+  preload:
+    enabled: true
+    files:
+      init-db.js: |
+        db = db.getSiblingDB("deploy");
+        db.createCollection("users");
+        db.users.insertMany([
+          {
+            "id": "123e4567-e89b-12d3-a456-426614174000",
+            "email": "example@example.com",
+            "username": "exampleuser",
+            "isAdmin": false,
+            "publicKeys": [
+              {
+                "name": "example-key",
+                "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF0GrysHwCuVJMAlwhZlstFbr08L4jaZdBrL9fBOkm1n dev-key-public"
+              }
+            ]
+          }
+        ]);
+
+syncdb:
+  externalMongo:
+    enabled: false
+
+ssh:
+  # This key is only used for dev
+  # That is why it is tracked in the repo
+  hostSignerKey: |
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+    QyNTUxOQAAACBEF/iiygRkJm+JErXjVN1m9eFqyJpqO92HTGKMbdVMTgAAAJhRcEeyUXBH
+    sgAAAAtzc2gtZWQyNTUxOQAAACBEF/iiygRkJm+JErXjVN1m9eFqyJpqO92HTGKMbdVMTg
+    AAAEA03jOu4AMmOrRhJfLQtHV2sgXF6aopGy613c0L97Jm2EQX+KLKBGQmb4kSteNU3Wb1
+    4WrImmo73YdMYoxt1UxOAAAAEHBoaWxpcEBhcmNobGludXgBAgMEBQ==
+    -----END OPENSSH PRIVATE KEY-----
+

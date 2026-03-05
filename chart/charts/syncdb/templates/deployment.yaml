@@ -22,8 +22,6 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
-        readOnlyRootFilesystem: true
-        privileged: false
       containers:
         - name: syncdb-worker
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -47,6 +45,31 @@ spec:
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "Secret name for redis is required" .Values.redis.secretName }}
+                  key: password
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "Secret name for mongo is required" .Values.mongo.secretName }}
+                  key: user
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "Secret name for mongo is required" .Values.mongo.secretName }}
+                  key: password
+
+            {{- if .Values.externalMongo.enabled }}
+            - name: MONGO_HOST
+              value: "{{ required "Externalmongo requires a name for the svc" .Values.externalMongo.name }}:{{ .Values.externalMongo.port | default 27017 }}"
+            {{- else  }}
+            - name: MONGO_HOST
+              value: "{{ required "If externalmongo isnt used a mongo hostname has to be provided" .Values.mongo.name }}:{{ .Values.mongo.port | default 27017 }}"
+            {{- end}}
+            - name: REDIS_ADDR
+              value: "{{ required "Redis service name is required" .Values.redis.name }}:{{ .Values.redis.port | default 6379 }}"
           volumeMounts:
             {{- if .Values.config.enabled }}
             - name: config

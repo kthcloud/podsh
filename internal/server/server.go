@@ -5,8 +5,9 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/kthcloud/podsh/internal/metrics"
+	register "github.com/kthcloud/podsh/internal/metrics"
 	"github.com/kthcloud/podsh/internal/sshd"
+	"github.com/kthcloud/podsh/pkg/metrics"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -23,6 +24,10 @@ func New(opts ...Option) *Server {
 	cfg := DefaultConfig()
 	for _, opt := range opts {
 		opt(&cfg)
+	}
+
+	if cfg.Metrics != nil {
+		register.RegisterSSHdMetrics(cfg.Metrics)
 	}
 
 	s := &Server{
@@ -48,9 +53,15 @@ func (s *Server) Validate() (err error) {
 func (s *Server) Start(ctx context.Context) error {
 	var errg errgroup.Group
 	if s.metrics != nil {
+		ms := metrics.NewServer(
+			metrics.WithMetrics(s.metrics),
+			metrics.WithHealth(metrics.NewHealth()),
+			metrics.WithLiveness(metrics.NewHealth()),
+			metrics.WithReadiness(metrics.NewHealth()),
+		)
 		errg.Go(func() error {
 			s.logger.Info("Metrics server started on", "address", "http://"+s.metricsAddress)
-			if err := s.metrics.ListenAndServe(ctx, s.metricsAddress); err != nil {
+			if err := ms.ListenAndServe(ctx, s.metricsAddress); err != nil {
 				s.logger.Error("Metrics server exited", "error", err)
 				return err
 			}

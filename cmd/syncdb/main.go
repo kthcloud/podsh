@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-redis/redis"
 	"github.com/kthcloud/podsh/internal/workers/syncdb"
+	"github.com/kthcloud/podsh/pkg/metrics"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -77,7 +78,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(*mongoURI))
+	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(finalMongoURI))
 	if err != nil {
 		slog.Error("failed to connect to mongo", "error", err)
 		os.Exit(1)
@@ -97,30 +98,33 @@ func main() {
 
 	slog.Info("starting syncdb worker")
 
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
-	})
+	var m metrics.Metrics
 
-	http.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
-		// Optionally, check Redis and Mongo connectivity for readiness
+	m = metrics.NewPrometheus()
+
+	m.RegisterCounter("failed_auth_total", "Failed SSH auth attempts")
+	m.RegisterHistogram("auth_duration_seconds", "Auth duration", nil)
+
+	health := metrics.NewHealth(func() error {
 		if err := redisClient.Ping().Err(); err != nil {
-			http.Error(w, "redis not ready", http.StatusServiceUnavailable)
-			return
+			return err
 		}
 		if err := mongoClient.Ping(ctx, readpref.Primary()); err != nil {
-			http.Error(w, "mongo not ready", http.StatusServiceUnavailable)
-			return
+			return err
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		return nil
 	})
+
+	server := metrics.NewServer(metrics.WithMetrics(m),
+		metrics.WithHealth(health),
+		metrics.WithReadiness(health),
+		metrics.WithLiveness(metrics.NewHealth()),
+	)
 
 	go func() {
 		slog.Info("starting probe server", "port", *probePort)
-		if err := http.ListenAndServe(":"+*probePort, nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("probe server stopped", "error", err)
-			os.Exit(1)
+		if err := server.ListenAndServe(ctx, ":"+*probePort); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("probe server exited", "error", err)
 		}
 	}()
 

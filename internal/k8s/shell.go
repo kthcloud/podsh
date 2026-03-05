@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"errors"
-	"log"
 
 	"github.com/kthcloud/podsh/internal/sshd"
 	"k8s.io/client-go/tools/remotecommand"
@@ -82,7 +81,7 @@ func (r *resizeQueue) Next() *remotecommand.TerminalSize {
 	if !ok {
 		return nil
 	}
-	log.Println("resize term", "witdh", ev.Width, "height", ev.Height)
+	// log.Println("resize term", "witdh", ev.Width, "height", ev.Height)
 	return &remotecommand.TerminalSize{
 		Width:  uint16(ev.Width),
 		Height: uint16(ev.Height),

@@ -1,30 +1,19 @@
 {{- if .Values.rbac.enabled }}
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: podsh-server-role
-  namespace: {{ .Values.rbac.namespace }}
+  name: podsh-server-clusterrole
 rules:
   - apiGroups: [""]
     resources:
       - pods
+      - pods/exec
+      - pods/portforward
+      - pods/ephemeralcontainers
     verbs:
       - get
       - list
       - watch
-
-  - apiGroups: [""]
-    resources:
-      - pods/exec
-      - pods/portforward
-    verbs:
       - create
-
-  - apiGroups: [""]
-    resources:
-      - pods/ephemeralcontainers
-    verbs:
       - update
-      - create
 {{- end }}
-
