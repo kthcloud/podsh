@@ -22,7 +22,9 @@ COPY go.mod go.sum ./
 # Fetch dependencies and build the binary
 ENV CGO_ENABLED=0
 
-RUN go mod download -x
+RUN --mount=type=cache,target=/go/pkg/mod \
+  --mount=type=cache,target=/root/.cache/go-build \
+  go mod download -x
 
 # Copy the rest of the project to ensure code changes doesnt trigger re-download of all deps
 COPY . .
@@ -33,7 +35,9 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG GIT_TAG
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+RUN --mount=type=cache,target=/go/pkg/mod \
+  --mount=type=cache,target=/root/.cache/go-build \
+  CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
   go build -o podsh_${TARGETOS}_${TARGETARCH} -ldflags="-w -s -X main.version=${GIT_TAG}" ./cmd/podsh && \
   setcap 'cap_net_bind_service=+ep' podsh_${TARGETOS}_${TARGETARCH}
 
@@ -45,8 +49,9 @@ COPY --from=runner-setup /etc/passwd /etc/passwd
 COPY --from=runner-setup /etc/group /etc/group
 
 ENV HOME=/opt/podsh
-ENV KUBECONFIG=/etc/podsh/kube/config
-ENV PROFILE=prod
+ENV PODSH_KUBECONFIG=/etc/podsh/kube/config
+ENV PODSH_PROFILE=prod
+ENV PODSH_CONFIG=/etc/podsh/
 
 # Set up the working directory
 WORKDIR /opt/podsh

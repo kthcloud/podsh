@@ -10,7 +10,7 @@ run = "helmfile -e dev lint"
 
 [tasks.build-images]
 description = "Build all images using buildx bake"
-run = "docker buildx bake all"
+run = "docker buildx bake"
 
 [tasks.load-images]
 env = { KUBECONFIG = ".secrets/podsh-dev-kubeconfig" }

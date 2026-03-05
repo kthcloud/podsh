@@ -9,7 +9,7 @@ tool (
 )
 
 require (
-	github.com/Phillezi/common/config v0.0.0-20250720144034-e66c0601d876
+	github.com/Phillezi/common/utils v0.0.0-20250720144034-e66c0601d876
 	github.com/Phillezi/interrupt v0.0.2
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/phillezi/sftp v1.14.0
@@ -27,7 +27,6 @@ require (
 )
 
 require (
-	github.com/Phillezi/common/utils v0.0.0-20250720144034-e66c0601d876 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

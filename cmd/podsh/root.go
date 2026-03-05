@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"log"
-	"log/slog"
 	"os"
 	"path"
 
-	viperconf "github.com/Phillezi/common/config/viper"
+	"github.com/kthcloud/podsh/internal/config"
 	"github.com/kthcloud/podsh/internal/defaults"
 	"github.com/kthcloud/podsh/internal/profiles"
 	"github.com/kthcloud/podsh/internal/server"
@@ -44,8 +43,6 @@ var rootCmd = cobra.Command{
 			return err
 		}
 
-		slog.SetLogLoggerLevel(slog.LevelDebug)
-
 		if err := s.Start(cmd.Context()); err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}
@@ -55,7 +52,7 @@ var rootCmd = cobra.Command{
 }
 
 func init() {
-	cobra.OnInitialize(func() { viperconf.InitConfig(podsh) })
+	cobra.OnInitialize(func() { config.InitConfig(podsh) })
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -67,6 +64,12 @@ func init() {
 	rootCmd.Flags().Var(profileFlag, "profile", "The profile")
 	viper.BindPFlag("profile", rootCmd.Flags().Lookup("profile"))
 
+	rootCmd.Flags().String("config", "", "Where to look for the config.yaml")
+	viper.BindPFlag("config", rootCmd.Flags().Lookup("config"))
+
+	rootCmd.Flags().String("log-level", "info", "The log level to use")
+	viper.BindPFlag("log.level", rootCmd.Flags().Lookup("log-level"))
+
 	rootCmd.Flags().String("address", defaults.DefaultBindAddress, "The server address")
 	viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))
 
@@ -77,29 +80,29 @@ func init() {
 	viper.BindPFlag("kubeconfig", rootCmd.Flags().Lookup("kubeconfig"))
 
 	rootCmd.Flags().String("dev-public-key-file", path.Join(home, ".ssh", "id_ed25519.pub"), "The ")
-	viper.BindPFlag("dev-public-key-file", rootCmd.Flags().Lookup("dev-public-key-file"))
+	viper.BindPFlag("dev.publickeyfile", rootCmd.Flags().Lookup("dev-public-key-file"))
 
 	rootCmd.Flags().Float64("limit-rate", defaults.DefaultLimitRate, "The ratelimit rate to use")
-	viper.BindPFlag("limit-rate", rootCmd.Flags().Lookup("limit-rate"))
+	viper.BindPFlag("limit.rate", rootCmd.Flags().Lookup("limit-rate"))
 
 	rootCmd.Flags().Int("limit-burst", defaults.DefaultLimitBurst, "The ratelimit burst to use")
-	viper.BindPFlag("limit-burst", rootCmd.Flags().Lookup("limit-burst"))
+	viper.BindPFlag("limit.burst", rootCmd.Flags().Lookup("limit-burst"))
 
 	rootCmd.Flags().Duration("limit-ttl", defaults.DefaultLimitTTL, "The ratelimit ttl to use")
-	viper.BindPFlag("limit-ttl", rootCmd.Flags().Lookup("limit-ttl"))
+	viper.BindPFlag("limit.ttl", rootCmd.Flags().Lookup("limit-ttl"))
 
 	rootCmd.Flags().String("metrics-address", defaults.DefaultMetricsAddr, "The address the metrics server should use")
-	viper.BindPFlag("metrics-address", rootCmd.Flags().Lookup("metrics-address"))
+	viper.BindPFlag("metrics.address", rootCmd.Flags().Lookup("metrics-address"))
 
 	rootCmd.Flags().String("ssh-host-signer-path", defaults.DefaultHostSignerPath, "The path where the hosts signing key is")
-	viper.BindPFlag("ssh-host-signer-path", rootCmd.Flags().Lookup("ssh-host-signer-path"))
+	viper.BindPFlag("ssh.hostsignerpath", rootCmd.Flags().Lookup("ssh-host-signer-path"))
 
 	rootCmd.Flags().String("redis-address", defaults.DefaultRedisAddress, "The address to redis")
-	viper.BindPFlag("redis-address", rootCmd.Flags().Lookup("redis-address"))
+	viper.BindPFlag("redis.address", rootCmd.Flags().Lookup("redis-address"))
 
 	rootCmd.Flags().Int("redis-db", defaults.DefaultRedisDB, "The db to use in redis")
-	viper.BindPFlag("redis-db", rootCmd.Flags().Lookup("redis-db"))
+	viper.BindPFlag("redis.db", rootCmd.Flags().Lookup("redis-db"))
 
 	rootCmd.Flags().String("redis-password", defaults.DefaultRedisPassword, "The password to use for redis")
-	viper.BindPFlag("redis-password", rootCmd.Flags().Lookup("redis-password"))
+	viper.BindPFlag("redis.password", rootCmd.Flags().Lookup("redis-password"))
 }

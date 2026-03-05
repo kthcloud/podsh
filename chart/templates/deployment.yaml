@@ -30,11 +30,9 @@ spec:
           args:
             - '--kubeconfig='
             - '--ssh-host-signer-path=/key'
-            - '--address=:22'
-            - '--metrics-address=:8080'
-            # TODO: fix the envs
-            - '--redis-address=podsh-redis:6379'
-            - '--redis-password=changeme'
+            {{- if .Values.config.enabled }}
+            - "--config={{ .Values.config.mountPath }}"
+            {{- end }}
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -56,12 +54,12 @@ spec:
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
-            - name: REDIS_PASSWORD
+            - name: PODSH_REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ required "Secret name for redis is required" .Values.redis.auth.secretName }}
                   key: password
-            - name: REDIS_ADDRESS
+            - name: PODSH_REDIS_ADDRESS
               value: podsh-redis:6379
           volumeMounts:
             {{- if .Values.config.enabled }}
