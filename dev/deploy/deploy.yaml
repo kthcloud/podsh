@@ -24,14 +24,14 @@ spec:
         app.kubernetes.io/deploy-name: example
     spec:
       containers:
-        - name: alpine-sleep
-          image: alpine:latest
+        - name: example-sleep
+          image: ubuntu:latest
           command: ["sh", "-c", "sleep infinity"]
           resources:
             limits:
-              cpu: 100m
-              memory: 64Mi
+              cpu: 2000m
+              memory: 4Gi
             requests:
-              cpu: 50m
-              memory: 32Mi
+              cpu: 100m
+              memory: 100Mi
 

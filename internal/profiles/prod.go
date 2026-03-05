@@ -26,7 +26,7 @@ func (ProdProfileImpl) Mode() Mode {
 
 func (ProdProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Config, error) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: slog.LevelDebug, // slog.LevelInfo,
 	}))
 	slog.SetDefault(logger)
 

@@ -348,7 +348,7 @@ func handleSessionCh(ctx BaseContext, reqs <-chan *ssh.Request, logger *slog.Log
 			if !ok {
 				return nil
 			}
-			err := handler.HandleExec(sess, "-c", command)
+			err := handler.HandleExec(sess, command)
 			code := 0
 			if err != nil {
 				code = 1
@@ -357,7 +357,11 @@ func handleSessionCh(ctx BaseContext, reqs <-chan *ssh.Request, logger *slog.Log
 			_, errs := sess.ch.SendRequest(ResponseTypeExitStatus, false, ssh.Marshal(&status))
 			return errors.Join(errs, err)
 		case <-sess.sftp:
-			return handler.HandleSFTP(sess)
+			if err := handler.HandleSFTP(sess); err != nil {
+				logger.Error("SFTP failed", "error", err)
+				return err
+			}
+			return nil
 		}
 	})
 
