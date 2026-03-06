@@ -265,10 +265,10 @@ loop:
 
 					forwarded[key] = fm
 					fw = fm
-					log.Info("opended k8s tunnel", "key", key)
+					log.Debug("opended k8s tunnel", "key", key)
 
 				} else {
-					log.Info("re-using open k8s tunnel", "key", key)
+					log.Debug("re-using open k8s tunnel", "key", key)
 				}
 
 				if fw == nil {
@@ -339,7 +339,7 @@ func NewSession(ctx BaseContext) *SessionV2 {
 func (s *SessionV2) Resize() <-chan ResizeEvent { return s.resizeCh }
 
 func handleSessionCh(ctx BaseContext, reqs <-chan *ssh.Request, logger *slog.Logger, handler ShellHandler) (err error) {
-	logger.Info("handleSession")
+	logger.Debug("[TRACE] handleSession")
 	defer logger.Debug("[TRACE] handleSession exit")
 
 	childCtx, cancel := context.WithCancel(ctx)
@@ -393,7 +393,7 @@ func handleSessionCh(ctx BaseContext, reqs <-chan *ssh.Request, logger *slog.Log
 					continue
 				}
 				sess.resizeCh <- ResizeEvent{Width: int(ptyReq.Cols), Height: int(ptyReq.Rows)}
-				logger.Info("Got PTY", "ptyReq", ptyReq)
+				logger.Debug("Got PTY", "ptyReq", ptyReq)
 				_ = req.Reply(true, nil)
 			case RequestTypeWindowChange:
 				var winchReq requests.WindowChangeRequest
