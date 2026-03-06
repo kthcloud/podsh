@@ -45,7 +45,7 @@ jobs:
           fi
 
       - name: Bake
-        uses: docker/bake-action@v6
+        uses: docker/bake-action@v7
         with:
           files: docker-bake.hcl
           push: true
@@ -62,7 +62,7 @@ jobs:
           echo "REPO=podsh" >> "$GITHUB_ENV"
 
       - name: Bake 4 kthcloud
-        uses: docker/bake-action@v6
+        uses: docker/bake-action@v7
         with:
           files: docker-bake.hcl
           push: true
