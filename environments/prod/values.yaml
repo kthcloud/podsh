@@ -1,5 +1,6 @@
 image:
-  tag: "v0.0.1"
+  repository: registry.cloud.cbh.kth.se/podsh/podsh
+  tag: "v0.0.3"
 
 ssh:
   hostKeySecretName: prod-ssh-hostkey
@@ -9,19 +10,29 @@ rbac:
 
 syncdb:
   image:
-    tag: "v0.0.1"
+    repository: registry.cloud.cbh.kth.se/podsh/syncdb
+    tag: "v0.0.3"
   externalMongo:
     enabled: true
     ip: 172.31.100.102
   mongo:
     secretName: prod-mongo-secret
+  redis:
+    secretName: prod-redis-secret
 
 redis:
   auth:
     enabled: true
     createSecret: false
     secretName: prod-redis-secret
+  persistence:
+    useStorageClass: true
+    storageClass: kthcloud-misc
 
 mongo:
   enabled: false
+
+agent:
+  image:
+    repository: registry.cloud.cbh.kth.se/podsh/agent
 

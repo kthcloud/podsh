@@ -41,9 +41,9 @@ func main() {
 	finalMongoURI := *mongoURI
 	if finalMongoURI == "" {
 		if *mongoUser != "" && *mongoPassword != "" {
-			finalMongoURI = fmt.Sprintf("mongodb://%s:%s@%s", *mongoUser, *mongoPassword, *mongoHost)
+			finalMongoURI = fmt.Sprintf("mongodb://%s:%s@%s/%s", *mongoUser, *mongoPassword, *mongoHost, *mongoDB)
 		} else {
-			finalMongoURI = fmt.Sprintf("mongodb://%s", *mongoHost)
+			finalMongoURI = fmt.Sprintf("mongodb://%s/%s", *mongoHost, *mongoDB)
 		}
 	}
 

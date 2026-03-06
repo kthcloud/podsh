@@ -2,6 +2,9 @@ environments:
   dev:
     values:
       - environments/dev/values.yaml
+  prod:
+    values:
+      - environments/prod/values.yaml
 
 ---
 repositories:

@@ -12,6 +12,7 @@ auth:
 persistence:
   enabled: true
   size: 1Gi
+  useStorageClass: false
   storageClass: ""
 
 resources:
