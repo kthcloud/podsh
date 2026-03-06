@@ -8,6 +8,7 @@ import (
 
 	ratelimiter "github.com/kthcloud/podsh/internal/ratelimit"
 	"github.com/kthcloud/podsh/internal/tarpit"
+	"github.com/kthcloud/podsh/pkg/metrics"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -19,6 +20,7 @@ var (
 	ErrNoSessionHandler         = errors.Join(errors.New("no session handler"), ErrValidation)
 	ErrNoPublicKeyAuthenticator = errors.Join(errors.New("no publickey authenticator"), ErrValidation)
 	ErrRateLimiterNoHasher      = errors.Join(errors.New("ratelimiter provided but no hasher was provided"), ErrValidation)
+	ErrNoMetrics                = errors.Join(errors.New("metrics is nil"), ErrValidation)
 )
 
 type Server struct {
@@ -30,6 +32,7 @@ type Server struct {
 	limiter    ratelimiter.Limiter
 	hasher     ratelimiter.Hasher
 	tarpit     *tarpit.Tarpit
+	metrics    metrics.Metrics
 
 	connector Connector
 
@@ -50,6 +53,7 @@ func New(opts ...Option) *Server {
 		auth:       cfg.PublicKeyAuthenticator,
 		limiter:    cfg.Limiter,
 		hasher:     cfg.Hasher,
+		metrics:    cfg.Metrics,
 	}
 	if s.tarpit == nil {
 		s.tarpit = tarpit.NewTarpit(s.ctx, 10)
@@ -69,7 +73,7 @@ func New(opts ...Option) *Server {
 			},
 		}
 		scfg.AddHostKey(s.hostSigner)
-		s.connector = NewConnectorImpl(s.ctx, s.logger, scfg, cfg.Handler2)
+		s.connector = NewConnectorImpl(s.ctx, s.logger, scfg, cfg.Handler2, cfg.Metrics)
 	}
 
 	return s
@@ -93,6 +97,9 @@ func (s *Server) Validate() (err error) {
 	}
 	if s.limiter != nil && s.hasher == nil {
 		err = errors.Join(ErrRateLimiterNoHasher, err)
+	}
+	if s.metrics == nil {
+		err = errors.Join(ErrNoMetrics, err)
 	}
 	return
 }

@@ -9,6 +9,8 @@ import (
 	"net"
 	"time"
 
+	metricsConstants "github.com/kthcloud/podsh/internal/metrics"
+	"github.com/kthcloud/podsh/pkg/metrics"
 	"github.com/kthcloud/podsh/pkg/ssh/requests"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
@@ -139,17 +141,19 @@ type ConnectorImpl struct {
 	config *ssh.ServerConfig
 
 	handler Handler
+	metrics metrics.Metrics
 
 	perConnGoroutineCap int
 }
 
-func NewConnectorImpl(ctx context.Context, logger *slog.Logger, config *ssh.ServerConfig, handler Handler) *ConnectorImpl {
+func NewConnectorImpl(ctx context.Context, logger *slog.Logger, config *ssh.ServerConfig, handler Handler, metrics metrics.Metrics) *ConnectorImpl {
 	return &ConnectorImpl{
 		ctx:                 ctx,
 		logger:              logger,
 		config:              config,
 		perConnGoroutineCap: 10,
 		handler:             handler,
+		metrics:             metrics,
 	}
 }
 
@@ -162,6 +166,7 @@ func (ci *ConnectorImpl) Handle(conn net.Conn) error {
 
 	connection, chans, reqs, err := ssh.NewServerConn(conn, ci.config)
 	if err != nil {
+		ci.metrics.Counter(metricsConstants.PodshFailedAuth).Inc()
 		return errors.Join(err, ErrNotPermitted)
 	}
 
@@ -178,12 +183,18 @@ func (ci *ConnectorImpl) Handle(conn net.Conn) error {
 	}
 
 	if identity.UserID == "" {
+		log.Warn("authorized user has no user id, denying")
+		ci.metrics.Counter(metricsConstants.PodshFailedAuth).Inc()
 		return ErrNotPermitted
 	}
 
 	if identity.RequestedHostname == "" {
+		log.Warn("authorized user has no requested host, denying")
+		ci.metrics.Counter(metricsConstants.PodshFailedAuth).Inc()
 		return ErrNotPermitted
 	}
+
+	ci.metrics.Counter(metricsConstants.PodshSuccessfulAuth).Inc()
 
 	log = log.With("UserID", identity.UserID, "RequestedHostname", identity.RequestedHostname)
 

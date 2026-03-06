@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	ratelimiter "github.com/kthcloud/podsh/internal/ratelimit"
+	"github.com/kthcloud/podsh/pkg/metrics"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -15,6 +16,7 @@ type Config struct {
 	PublicKeyAuthenticator PublicKeyAuthenticator
 	Limiter                ratelimiter.Limiter
 	Hasher                 ratelimiter.Hasher
+	Metrics                metrics.Metrics
 
 	Handler2 Handler
 
@@ -24,6 +26,8 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Ctx: context.Background(),
+
+		Metrics: metrics.NewNoop(),
 
 		Logger: slog.New(slog.DiscardHandler),
 	}
@@ -40,6 +44,7 @@ func WithConfig(config Config) Option {
 		cfg.PublicKeyAuthenticator = config.PublicKeyAuthenticator
 		cfg.Limiter = config.Limiter
 		cfg.Hasher = config.Hasher
+		WithMetrics(config.Metrics)(cfg)
 
 		cfg.Handler2 = config.Handler2
 	}
@@ -76,13 +81,28 @@ func WithPublicKeyAuth(a PublicKeyAuthenticator) Option {
 }
 
 func WithLimiter(limiter ratelimiter.Limiter) Option {
+	if limiter == nil {
+		return func(_ *Config) {}
+	}
 	return func(cfg *Config) {
 		cfg.Limiter = limiter
 	}
 }
 
 func WithHasher(hasher ratelimiter.Hasher) Option {
+	if hasher == nil {
+		return func(_ *Config) {}
+	}
 	return func(cfg *Config) {
 		cfg.Hasher = hasher
+	}
+}
+
+func WithMetrics(metrics metrics.Metrics) Option {
+	if metrics == nil {
+		return func(_ *Config) {}
+	}
+	return func(c *Config) {
+		c.Metrics = metrics
 	}
 }
