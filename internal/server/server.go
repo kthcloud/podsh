@@ -28,6 +28,7 @@ func New(opts ...Option) *Server {
 
 	if cfg.Metrics != nil {
 		register.RegisterSSHdMetrics(cfg.Metrics)
+		cfg.SSHDConfig.Metrics = cfg.Metrics
 	}
 
 	s := &Server{

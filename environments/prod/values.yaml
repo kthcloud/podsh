@@ -1,0 +1,27 @@
+image:
+  tag: "v0.0.1"
+
+ssh:
+  hostKeySecretName: prod-ssh-hostkey
+
+rbac:
+  namespace: deploy
+
+syncdb:
+  image:
+    tag: "v0.0.1"
+  externalMongo:
+    enabled: true
+    ip: 172.31.100.102
+  mongo:
+    secretName: prod-mongo-secret
+
+redis:
+  auth:
+    enabled: true
+    createSecret: false
+    secretName: prod-redis-secret
+
+mongo:
+  enabled: false
+

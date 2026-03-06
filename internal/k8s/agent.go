@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kthcloud/podsh/internal/defaults"
+	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
@@ -41,9 +41,8 @@ func ensureAgentContainer(
 		EphemeralContainerCommon: corev1.EphemeralContainerCommon{
 			Name: "podsh-agent",
 			// We run a pkg/sftp binary and pipe our sftp requests to it
-			Image: defaults.DefaultPodshHelperImage,
-			// For dev:
-			ImagePullPolicy: corev1.PullIfNotPresent,
+			Image:           viper.GetString("agent.image"),
+			ImagePullPolicy: corev1.PullPolicy(viper.GetString("agent.imagepullpolicy")),
 			Command:         []string{"/usr/bin/sleep", "infinity"},
 			Stdin:           true,
 			TTY:             false,

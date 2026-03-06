@@ -83,8 +83,15 @@ mongo:
   enabled: false
 
 ssh:
+  # A externally created secret with the host signer key
+  #hostKeySecretName: "prod-ssh-hostkey"
   #hostSignerKey: |
   #  -----BEGIN OPENSSH PRIVATE KEY-----
   #  ...
   #  -----END OPENSSH PRIVATE KEY-----
 
+agent:
+  image:
+    repository: ghcr.io/kthcloud/podsh/podsh
+    tag: "latest"
+    pullPolicy: IfNotPresent

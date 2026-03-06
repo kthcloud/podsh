@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kthcloud/podsh/internal/sshd"
+	"github.com/kthcloud/podsh/pkg/metrics"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -93,7 +94,7 @@ func TestConnector(t *testing.T) {
 		defer client.Close()
 	}()
 
-	connector := sshd.NewConnectorImpl(t.Context(), slog.Default(), serverConfig, nil)
+	connector := sshd.NewConnectorImpl(t.Context(), slog.Default(), serverConfig, nil, metrics.NewNoop())
 
 	if err := connector.Handle(serverConn); err == nil {
 		t.Fail()

@@ -15,7 +15,8 @@ const (
 )
 
 const (
-	DefaultPodshHelperImage = "ghcr.io/kthcloud/podsh/agent:latest"
+	DefaultPodshAgentImage           = "ghcr.io/kthcloud/podsh/agent:latest"
+	DefaultPodshAgentImagePullPolicy = "IfNotPresent"
 )
 
 const (

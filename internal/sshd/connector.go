@@ -9,6 +9,8 @@ import (
 	"net"
 	"time"
 
+	metricsConstants "github.com/kthcloud/podsh/internal/metrics"
+	"github.com/kthcloud/podsh/pkg/metrics"
 	"github.com/kthcloud/podsh/pkg/ssh/requests"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
@@ -139,17 +141,19 @@ type ConnectorImpl struct {
 	config *ssh.ServerConfig
 
 	handler Handler
+	metrics metrics.Metrics
 
 	perConnGoroutineCap int
 }
 
-func NewConnectorImpl(ctx context.Context, logger *slog.Logger, config *ssh.ServerConfig, handler Handler) *ConnectorImpl {
+func NewConnectorImpl(ctx context.Context, logger *slog.Logger, config *ssh.ServerConfig, handler Handler, metrics metrics.Metrics) *ConnectorImpl {
 	return &ConnectorImpl{
 		ctx:                 ctx,
 		logger:              logger,
 		config:              config,
 		perConnGoroutineCap: 10,
 		handler:             handler,
+		metrics:             metrics,
 	}
 }
 
@@ -160,10 +164,18 @@ func (ci *ConnectorImpl) Handle(conn net.Conn) error {
 	defer log.Debug("[TRACE] Handle exit")
 	defer conn.Close()
 
+	deadline := time.Now().Add(10 * time.Second)
+	if err := conn.SetDeadline(deadline); err != nil {
+		return fmt.Errorf("failed to set handshake deadline: %w", err)
+	}
+
 	connection, chans, reqs, err := ssh.NewServerConn(conn, ci.config)
 	if err != nil {
+		ci.metrics.Counter(metricsConstants.PodshFailedAuth).Inc()
 		return errors.Join(err, ErrNotPermitted)
 	}
+
+	_ = conn.SetDeadline(time.Time{})
 
 	defer connection.Close()
 
@@ -178,12 +190,18 @@ func (ci *ConnectorImpl) Handle(conn net.Conn) error {
 	}
 
 	if identity.UserID == "" {
+		log.Warn("authorized user has no user id, denying")
+		ci.metrics.Counter(metricsConstants.PodshFailedAuth).Inc()
 		return ErrNotPermitted
 	}
 
 	if identity.RequestedHostname == "" {
+		log.Warn("authorized user has no requested host, denying")
+		ci.metrics.Counter(metricsConstants.PodshFailedAuth).Inc()
 		return ErrNotPermitted
 	}
+
+	ci.metrics.Counter(metricsConstants.PodshSuccessfulAuth).Inc()
 
 	log = log.With("UserID", identity.UserID, "RequestedHostname", identity.RequestedHostname)
 
@@ -254,10 +272,10 @@ loop:
 
 					forwarded[key] = fm
 					fw = fm
-					log.Info("opended k8s tunnel", "key", key)
+					log.Debug("opended k8s tunnel", "key", key)
 
 				} else {
-					log.Info("re-using open k8s tunnel", "key", key)
+					log.Debug("re-using open k8s tunnel", "key", key)
 				}
 
 				if fw == nil {
@@ -328,7 +346,7 @@ func NewSession(ctx BaseContext) *SessionV2 {
 func (s *SessionV2) Resize() <-chan ResizeEvent { return s.resizeCh }
 
 func handleSessionCh(ctx BaseContext, reqs <-chan *ssh.Request, logger *slog.Logger, handler ShellHandler) (err error) {
-	logger.Info("handleSession")
+	logger.Debug("[TRACE] handleSession")
 	defer logger.Debug("[TRACE] handleSession exit")
 
 	childCtx, cancel := context.WithCancel(ctx)
@@ -382,7 +400,7 @@ func handleSessionCh(ctx BaseContext, reqs <-chan *ssh.Request, logger *slog.Log
 					continue
 				}
 				sess.resizeCh <- ResizeEvent{Width: int(ptyReq.Cols), Height: int(ptyReq.Rows)}
-				logger.Info("Got PTY", "ptyReq", ptyReq)
+				logger.Debug("Got PTY", "ptyReq", ptyReq)
 				_ = req.Reply(true, nil)
 			case RequestTypeWindowChange:
 				var winchReq requests.WindowChangeRequest

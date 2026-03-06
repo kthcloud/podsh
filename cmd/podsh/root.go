@@ -79,8 +79,14 @@ func init() {
 	rootCmd.Flags().String("kubeconfig", path.Join(home, ".kube", "config"), "The kubeconfig that should be used")
 	viper.BindPFlag("kubeconfig", rootCmd.Flags().Lookup("kubeconfig"))
 
-	rootCmd.Flags().String("dev-public-key-file", path.Join(home, ".ssh", "id_ed25519.pub"), "The ")
+	rootCmd.Flags().String("dev-public-key-file", path.Join(home, ".ssh", "id_ed25519.pub"), "The public key to add to the dev account in dev mode")
 	viper.BindPFlag("dev.publickeyfile", rootCmd.Flags().Lookup("dev-public-key-file"))
+
+	rootCmd.Flags().String("agent-image", defaults.DefaultPodshAgentImage, "The agent image to use")
+	viper.BindPFlag("agent.image", rootCmd.Flags().Lookup("agent-image"))
+
+	rootCmd.Flags().String("agent-image-pull-policy", defaults.DefaultPodshAgentImagePullPolicy, "The agent image pull policy")
+	viper.BindPFlag("agent.imagepullpolicy", rootCmd.Flags().Lookup("agent-image-pull-policy"))
 
 	rootCmd.Flags().Float64("limit-rate", defaults.DefaultLimitRate, "The ratelimit rate to use")
 	viper.BindPFlag("limit.rate", rootCmd.Flags().Lookup("limit-rate"))

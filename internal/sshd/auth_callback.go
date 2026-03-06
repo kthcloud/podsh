@@ -14,7 +14,6 @@ func (s *Server) publicKeyCallback(parent context.Context, logger *slog.Logger) 
 			return nil, errors.New("no authenticator configured")
 		}
 
-		// TODO: sanitize
 		deployment := meta.User()
 
 		id, err := s.auth.Authenticate(parent, ConnMetadata{
@@ -38,7 +37,7 @@ func (s *Server) publicKeyCallback(parent context.Context, logger *slog.Logger) 
 			},
 		}
 
-		logger.Info("authentication success", "deployment", deployment, "user", id.User, "userID", id.UserID, "remoteAddr", id.RemoteAddr)
+		logger.Info("authentication success", "deployment", deployment, "userID", id.UserID, "remoteAddr", id.RemoteAddr)
 		return perms, nil
 	}
 }
