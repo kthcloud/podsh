@@ -9,6 +9,7 @@ import (
 type Tarpit struct {
 	jobs chan Job
 	ctx  context.Context
+	sem  chan struct{}
 }
 
 type Job struct {
@@ -16,41 +17,55 @@ type Job struct {
 	Delay time.Duration
 }
 
-func NewTarpit(ctx context.Context, workers int) *Tarpit {
+func NewTarpit(ctx context.Context, maxWorkers int) *Tarpit {
 	t := &Tarpit{
 		jobs: make(chan Job, 1000),
 		ctx:  ctx,
+		sem:  make(chan struct{}, maxWorkers),
 	}
 
-	// start worker goroutines
-	//
-	// TODO: maybe flip it around and have one thread that spawns workers up to a limit instead
-	for range workers {
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case job := <-t.jobs:
-					select {
-					case <-time.After(job.Delay):
-					case <-ctx.Done():
-					}
-					job.Conn.Close()
-				}
-			}
-		}()
-	}
+	go t.run()
 
 	return t
+}
+
+func (t *Tarpit) run() {
+	for {
+		select {
+		case <-t.ctx.Done():
+			return
+
+		case job := <-t.jobs:
+			select {
+			case t.sem <- struct{}{}:
+				go t.handle(job)
+
+			case <-t.ctx.Done():
+				return
+			}
+		}
+	}
+}
+
+func (t *Tarpit) handle(job Job) {
+	defer func() { <-t.sem }()
+
+	timer := time.NewTimer(job.Delay)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+	case <-t.ctx.Done():
+	}
+
+	job.Conn.Close()
 }
 
 func (t *Tarpit) Add(conn net.Conn, delay time.Duration) {
 	select {
 	case t.jobs <- Job{Conn: conn, Delay: delay}:
-		// added to worker queue
 	default:
-		// queue full, drop immediately
+		// queue full
 		conn.Close()
 	}
 }
