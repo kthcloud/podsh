@@ -1,6 +1,12 @@
 # podsh
 
-This application acts as a gateway for ssh => kubectl exec -it, with user authentication and owner-id check for pods.
+`podsh` lets you get a shell for pods in k8s using ssh, allowing you to use containers for development. It acts as a SSH gateway that authentates and authorizes pod access based on SSH keys added to your kthcloud account.
+
+In kthcloud this enables development on pods that have access to shared GPUs using DRA + MPS, perfect for ML development.
+
+<img width="2560" height="1440" alt="image" src="https://github.com/user-attachments/assets/7a3c6f6f-7765-4630-96ca-7f248256daeb" />
+
+The picture above shows it in action with vscode remote ssh (to the left) and a normal ssh session (to the right).
 
 ## Client side usage
 
