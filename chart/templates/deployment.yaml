@@ -16,6 +16,10 @@ spec:
       labels:
         app.kubernetes.io/name: podsh-server
         app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: {{ .Values.rbac.serviceAccountName }}
       securityContext:

@@ -28,6 +28,7 @@ syncdb:
 ssh:
   # This key is only used for dev
   # That is why it is tracked in the repo
+  # gitguardian:ignore
   hostSignerKey: |
     -----BEGIN OPENSSH PRIVATE KEY-----
     b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW

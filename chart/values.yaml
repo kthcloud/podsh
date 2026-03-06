@@ -18,6 +18,11 @@ service:
       port: 22
       targetPort: 22
       protocol: TCP
+      nodePort: 30022
+
+    - name: http-metrics
+      port: 8080
+      targetPort: 8080
 
 rbac:
   enabled: true
@@ -95,3 +100,7 @@ agent:
     repository: ghcr.io/kthcloud/podsh/podsh
     tag: "latest"
     pullPolicy: IfNotPresent
+
+monitoring:
+  enabled: false
+

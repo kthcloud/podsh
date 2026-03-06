@@ -36,3 +36,6 @@ agent:
   image:
     repository: registry.cloud.cbh.kth.se/podsh/agent
 
+monitoring:
+  enabled: true
+

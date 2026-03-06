@@ -1,0 +1,19 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: podsh-server
+  labels: 
+    app.kubernetes.io/name: podsh-server
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: podsh-server
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+{{- end }}
+
