@@ -2,7 +2,7 @@ name: bake
 
 on:
   push:
-    branches: [main]
+    #branches: [main]
     tags: ["v*"]
     paths-ignore:
       - "chart/**"
