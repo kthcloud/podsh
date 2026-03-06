@@ -53,17 +53,19 @@ mise run dev-example
 ```
 
 
-## TODO
+## Features
 
-[x] pre-auth rate limiting
-[ ] handshake deadlines
-[x] tarpitting (sleep random time after failed auth)
-[ ] security log
-[x] tunneling support
-[x] command exec support
-[x] scp / sftp support
+- [x] pre-auth rate limiting
+- [x] handshake deadlines
+- [x] tarpitting
+- [x] tunneling support
+- [x] command exec support
+- [x] scp / sftp support
+- [x] prometheus metrics
+- [x] horizontally scalable
 
 ## Architecture / integration with go-deploy
 
 The user information is stored in the mongodb database that `go-deploy` uses. But this runs in another cluster. This data needs to be synced.
 Current solution is to poll this and populate a redis cache, not the best/cleanest solution but I think it will work ok.
+

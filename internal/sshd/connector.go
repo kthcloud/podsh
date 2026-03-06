@@ -164,11 +164,18 @@ func (ci *ConnectorImpl) Handle(conn net.Conn) error {
 	defer log.Debug("[TRACE] Handle exit")
 	defer conn.Close()
 
+	deadline := time.Now().Add(10 * time.Second)
+	if err := conn.SetDeadline(deadline); err != nil {
+		return fmt.Errorf("failed to set handshake deadline: %w", err)
+	}
+
 	connection, chans, reqs, err := ssh.NewServerConn(conn, ci.config)
 	if err != nil {
 		ci.metrics.Counter(metricsConstants.PodshFailedAuth).Inc()
 		return errors.Join(err, ErrNotPermitted)
 	}
+
+	_ = conn.SetDeadline(time.Time{})
 
 	defer connection.Close()
 
