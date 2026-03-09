@@ -37,6 +37,8 @@ func ensureAgentContainer(
 		}
 	}
 
+	var rootUID int64 = 0
+
 	agent := corev1.EphemeralContainer{
 		EphemeralContainerCommon: corev1.EphemeralContainerCommon{
 			Name: "podsh-agent",
@@ -46,6 +48,16 @@ func ensureAgentContainer(
 			Command:         []string{"/usr/bin/sleep", "infinity"},
 			Stdin:           true,
 			TTY:             false,
+			SecurityContext: &corev1.SecurityContext{
+				RunAsUser:  &rootUID,
+				RunAsGroup: &rootUID,
+				// Privileged: new(true),
+				Capabilities: &corev1.Capabilities{
+					Add: []corev1.Capability{
+						corev1.Capability("SYS_PTRACE"),
+					},
+				},
+			},
 		},
 		TargetContainerName: targetContainer,
 	}
