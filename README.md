@@ -26,10 +26,6 @@ ssh <deployment-name>@<public-ssh-host>:<public-ssh-port>
 
 Due to a bug in the `vscode-remote-development` extension pack, remote SSH in vscode only works if `devcontainers` are disabled, since it tries to bootstrap the devcontainers extension and fails to do this, due to getting stuck probing the container.
 
-> [!NOTE]
-> Only containers running as root works currently, due to an issue when vscode copies the vscode bin. (TODO fix)
-
-
 ## Local dev
 
 ### Prerequisites
