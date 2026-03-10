@@ -1,6 +1,6 @@
 image:
   repository: registry.cloud.cbh.kth.se/podsh/podsh
-  tag: "v0.0.3"
+  tag: "v0.0.4"
 
 ssh:
   hostKeySecretName: prod-ssh-hostkey
@@ -11,7 +11,7 @@ rbac:
 syncdb:
   image:
     repository: registry.cloud.cbh.kth.se/podsh/syncdb
-    tag: "v0.0.3"
+    tag: "v0.0.4"
   externalMongo:
     enabled: true
     ip: 172.31.100.102

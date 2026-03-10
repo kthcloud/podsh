@@ -1,6 +1,6 @@
 # podsh
 
-`podsh` lets you get a shell for pods in k8s using ssh, allowing you to use containers for development. It acts as a SSH gateway that authentates and authorizes pod access based on SSH keys added to your kthcloud account.
+`podsh` lets you get a shell for pods in k8s using ssh, allowing you to use containers for development. It acts as a SSH gateway that authenticates and authorizes pod access based on SSH keys added to your kthcloud account.
 
 In kthcloud this enables development on pods that have access to shared GPUs using DRA + MPS, perfect for ML development.
 
@@ -25,6 +25,10 @@ ssh <deployment-name>@<public-ssh-host>:<public-ssh-port>
 ## Using vscode remote SSH
 
 Due to a bug in the `vscode-remote-development` extension pack, remote SSH in vscode only works if `devcontainers` are disabled, since it tries to bootstrap the devcontainers extension and fails to do this, due to getting stuck probing the container.
+
+> [!NOTE]
+> Only containers running as root works currently, due to an issue when vscode copies the vscode bin. (TODO fix)
+
 
 ## Local dev
 
@@ -56,6 +60,38 @@ When all are ready you can run the command below to try getting a shell over ssh
 
 ```bash
 mise run dev-example
+```
+
+## Deploying
+
+### Prerequisites
+
+- helm
+- helmfile
+- kubectl
+
+### K8s setup
+
+#### Create the namespace in your k8s cluster
+
+```bash
+kubectl create ns podsh
+```
+
+#### Create secrets 
+
+Create the secrets for ssh private key (for server), redis auth and then a secret with the mongodb secrets for syncdb to be able to access it.
+
+> [!TIP]
+> Make a manifest containing the namespace creation and all your secrets that you keep private and just apply it.
+
+### Deploy
+
+Review (and modify) the configuration in the [values.yaml](./environments/prod/values.yaml) or create your own environment.
+
+```bash
+helmfile -e prod sync
+# if you have created your own environment replace prod with it
 ```
 
 
