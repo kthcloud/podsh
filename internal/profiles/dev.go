@@ -7,9 +7,11 @@ import (
 
 	"github.com/kthcloud/podsh/internal/k8s"
 	"github.com/kthcloud/podsh/internal/k8s/validate"
+	register "github.com/kthcloud/podsh/internal/metrics"
 	ratelimiter "github.com/kthcloud/podsh/internal/ratelimit"
 	"github.com/kthcloud/podsh/internal/server"
 	"github.com/kthcloud/podsh/internal/sshd"
+	"github.com/kthcloud/podsh/pkg/metrics"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/ssh"
 	"k8s.io/client-go/kubernetes"
@@ -67,11 +69,16 @@ func (DevProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Confi
 		return nil, err
 	}
 
+	metrics := metrics.NewPrometheus()
+	register.RegisterSSHdMetrics(metrics)
+	register.RegisterK8sMetrics(metrics)
+
 	return &server.Config{
 		Ctx: ctx,
 
 		Address:        v.GetString("address"),
 		MetricsAddress: v.GetString("metrics.address"),
+		Metrics:        metrics,
 
 		SSHDConfig: sshd.Config{
 			Ctx:                    ctx,
@@ -79,10 +86,11 @@ func (DevProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Confi
 			PublicKeyAuthenticator: auth,
 			Limiter:                ratelimiter.New(v.GetFloat64("limit.rate"), v.GetInt("limit.burst"), v.GetDuration("limit.ttl")),
 			Hasher:                 ratelimiter.NewHasher([]byte("supersecret")),
+			Metrics:                metrics,
 
 			Logger: slog.Default(),
 
-			Handler2: k8s.New(kc, cfg, k8s.NewLabelResolver(kc, v.GetString("namespace"))),
+			Handler2: k8s.New(kc, cfg, k8s.NewLabelResolver(kc, v.GetString("namespace")), metrics),
 		},
 
 		Logger: slog.Default(),

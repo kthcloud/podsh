@@ -15,5 +15,5 @@ func (hi *HandlerImpl) OpenTunnel(ctx context.Context, identity sshd.Identity, r
 	if target == nil {
 		return nil, ErrTargetNil
 	}
-	return NewForwardManager(ctx, hi.client, hi.config, target.Namespace, target.Pod, int(req.DestPort))
+	return NewForwardManager(ctx, hi.client, hi.config, target.Namespace, target.Pod, int(req.DestPort), hi.metrics)
 }

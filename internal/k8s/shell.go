@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	metricsConstants "github.com/kthcloud/podsh/internal/metrics"
 	"github.com/kthcloud/podsh/internal/sshd"
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -28,6 +29,11 @@ func (hi *HandlerImpl) HandleShell(ctx sshd.ShellContext) (err error) {
 	if err != nil {
 		return err
 	}
+
+	hi.metrics.Gauge(metricsConstants.PodshActiveK8sExecStreams).Inc()
+	defer func() {
+		hi.metrics.Gauge(metricsConstants.PodshActiveK8sExecStreams).Dec()
+	}()
 
 	if err := exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:             ctx.Stdin(),
@@ -64,6 +70,11 @@ func (hi *HandlerImpl) HandleExec(ctx sshd.Context, command ...string) error {
 	if err != nil {
 		return err
 	}
+
+	hi.metrics.Gauge(metricsConstants.PodshActiveK8sExecStreams).Inc()
+	defer func() {
+		hi.metrics.Gauge(metricsConstants.PodshActiveK8sExecStreams).Dec()
+	}()
 
 	if err := exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:  ctx.Stdin(),

@@ -9,6 +9,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	metricsConstants "github.com/kthcloud/podsh/internal/metrics"
+	"github.com/kthcloud/podsh/pkg/metrics"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -29,10 +31,12 @@ type ForwardManager struct {
 	port           int
 	client         kubernetes.Interface
 	config         *rest.Config
+
+	metrics metrics.Metrics
 }
 
 // NewForwardManager creates a new manager for a specific pod.
-func NewForwardManager(ctx context.Context, client kubernetes.Interface, config *rest.Config, namespace, pod string, port int) (*ForwardManager, error) {
+func NewForwardManager(ctx context.Context, client kubernetes.Interface, config *rest.Config, namespace, pod string, port int, metrics metrics.Metrics) (*ForwardManager, error) {
 	transport, upgrader, err := spdy.RoundTripperFor(config)
 	if err != nil {
 		return nil, fmt.Errorf("spdy roundtripper: %w", err)
@@ -58,6 +62,8 @@ func NewForwardManager(ctx context.Context, client kubernetes.Interface, config 
 		return nil, fmt.Errorf("spdy dial: %w", err)
 	}
 
+	metrics.Gauge(metricsConstants.PodshK8sActiveTunnelForwards).Inc()
+
 	return &ForwardManager{
 		ctx:           ctx,
 		conn:          conn,
@@ -67,6 +73,7 @@ func NewForwardManager(ctx context.Context, client kubernetes.Interface, config 
 		client:        client,
 		config:        config,
 		activeStreams: make(map[string]httpstream.Stream),
+		metrics:       metrics,
 	}, nil
 }
 
@@ -115,10 +122,15 @@ func (fm *ForwardManager) Forward(in io.Reader, out io.Writer) error {
 	wait, cancel := context.WithCancel(fm.ctx)
 	defer cancel()
 
+	fm.metrics.Gauge(metricsConstants.PodshK8sActiveTunnelStreams).Inc()
+
 	// Cleanup function
 	var once sync.Once
 	closeAll := func() {
 		once.Do(func() {
+			defer func() {
+				fm.metrics.Gauge(metricsConstants.PodshK8sActiveTunnelStreams).Dec()
+			}()
 			fm.mu.Lock()
 			defer fm.mu.Unlock()
 			dataStream.Close()
@@ -184,6 +196,8 @@ func (fm *ForwardManager) Close() error {
 		if fm.conn != nil {
 			fm.conn.Close()
 		}
+
+		fm.metrics.Gauge(metricsConstants.PodshK8sActiveTunnelForwards).Dec()
 	})
 	return nil
 }

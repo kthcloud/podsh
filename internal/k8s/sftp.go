@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 
+	metricsConstants "github.com/kthcloud/podsh/internal/metrics"
 	"github.com/kthcloud/podsh/internal/sshd"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -30,8 +31,6 @@ func (hi *HandlerImpl) HandleSFTP(ctx sshd.Context) error {
 		return err
 	}
 
-	log.Println("helper exists")
-
 	if err := waitForAgentReady(
 		ctx,
 		hi.client,
@@ -41,8 +40,6 @@ func (hi *HandlerImpl) HandleSFTP(ctx sshd.Context) error {
 		log.Println("error while waiting for agent:", err)
 		return err
 	}
-
-	log.Println("agent ready")
 
 	req := hi.client.CoreV1().RESTClient().Post().
 		Resource("pods").
@@ -68,7 +65,10 @@ func (hi *HandlerImpl) HandleSFTP(ctx sshd.Context) error {
 		return err
 	}
 
-	log.Println("spdy success")
+	hi.metrics.Gauge(metricsConstants.PodshK8sActiveSFTPStreams).Inc()
+	defer func() {
+		hi.metrics.Gauge(metricsConstants.PodshK8sActiveSFTPStreams).Dec()
+	}()
 
 	return exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:  ctx.Stdin(),
