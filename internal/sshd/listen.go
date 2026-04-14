@@ -38,7 +38,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 			if s.limiter != nil {
 				key, ok := s.hasher.FromConn(conn)
 				if !ok {
-					s.logger.Warn("gailed to hash connection")
+					s.logger.Warn("failed to hash connection")
 					_ = conn.Close()
 					continue
 				}

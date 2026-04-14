@@ -88,6 +88,12 @@ func (ProdProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Conf
 	register.RegisterSSHdMetrics(metrics)
 	register.RegisterK8sMetrics(metrics)
 
+	var limiter ratelimiter.Limiter
+
+	if v.GetBool("limit.enabled") {
+		limiter = ratelimiter.NewRedis(client, v.GetFloat64("limit.rate"), v.GetInt("limit.burst"), v.GetDuration("limit.ttl"))
+	}
+
 	return &server.Config{
 		Ctx: ctx,
 
@@ -99,7 +105,7 @@ func (ProdProfileImpl) Config(ctx context.Context, v *viper.Viper) (*server.Conf
 			Ctx:                    ctx,
 			Signer:                 hostSigner,
 			PublicKeyAuthenticator: auth,
-			Limiter:                ratelimiter.NewRedis(client, v.GetFloat64("limit.rate"), v.GetInt("limit.burst"), v.GetDuration("limit.ttl")),
+			Limiter:                limiter,
 			Hasher:                 ratelimiter.NewHasher([]byte("supersecret")),
 			Metrics:                metrics,
 

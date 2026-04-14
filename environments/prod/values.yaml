@@ -39,3 +39,10 @@ agent:
 monitoring:
   enabled: true
 
+env:
+  - name: PODSH_PROFILE
+    value: prod
+  - name: PODSH_LOG_LEVEL
+    value: info
+  - name: PODSH_LIMIT
+    value: "false"

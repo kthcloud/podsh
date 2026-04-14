@@ -9,9 +9,10 @@ const (
 )
 
 const (
-	DefaultLimitRate  = 1.2
-	DefaultLimitBurst = 12
-	DefaultLimitTTL   = 30 * time.Second
+	DefaultLimitEnabled = true
+	DefaultLimitRate    = 1.2
+	DefaultLimitBurst   = 12
+	DefaultLimitTTL     = 30 * time.Second
 )
 
 const (

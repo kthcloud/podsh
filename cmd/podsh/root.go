@@ -88,6 +88,9 @@ func init() {
 	rootCmd.Flags().String("agent-image-pull-policy", defaults.DefaultPodshAgentImagePullPolicy, "The agent image pull policy")
 	viper.BindPFlag("agent.imagepullpolicy", rootCmd.Flags().Lookup("agent-image-pull-policy"))
 
+	rootCmd.Flags().Bool("limit", defaults.DefaultLimitEnabled, "Enable or disable rate-limiting")
+	viper.BindPFlag("limit.enabled", rootCmd.Flags().Lookup("limit"))
+
 	rootCmd.Flags().Float64("limit-rate", defaults.DefaultLimitRate, "The ratelimit rate to use")
 	viper.BindPFlag("limit.rate", rootCmd.Flags().Lookup("limit-rate"))
 
